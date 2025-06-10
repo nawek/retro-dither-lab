@@ -3,7 +3,9 @@ import ImageUploader from '@/components/ImageUploader';
 import DitherCanvas from '@/components/DitherCanvas';
 import AlgorithmSelector from '@/components/AlgorithmSelector';
 import ControlPanel from '@/components/ControlPanel';
+import TemplateSelector from '@/components/TemplateSelector';
 import { DITHER_ALGORITHMS, applyDither } from '@/utils/ditherAlgorithms';
+import { TEMPLATES } from '@/utils/templates';
 import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
@@ -11,15 +13,21 @@ const Index = () => {
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
   const [ditheredImageData, setDitheredImageData] = useState<ImageData | null>(null);
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('floyd-steinberg');
+  const [selectedTemplate, setSelectedTemplate] = useState('classic-1bit');
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
   const [threshold, setThreshold] = useState(128);
   const [noiseLevel, setNoiseLevel] = useState(0);
+  const [saturation, setSaturation] = useState(100);
+  const [posterize, setPosterize] = useState(256);
+  const [blur, setBlur] = useState(0);
   const [isDragActive, setIsDragActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
+
+  const currentTemplate = TEMPLATES.find(t => t.id === selectedTemplate);
 
   // Debounced processing function for real-time updates
   const debouncedProcessImage = useMemo(() => {
@@ -31,17 +39,19 @@ const Index = () => {
       brightness: number,
       contrast: number,
       threshold: number,
-      noiseLevel: number
+      noiseLevel: number,
+      saturation: number,
+      posterize: number,
+      blur: number
     ) => {
       clearTimeout(timeoutId);
       
       timeoutId = setTimeout(() => {
         setIsProcessing(true);
         
-        // Use requestAnimationFrame for smooth updates
         requestAnimationFrame(() => {
           try {
-            const processed = applyDither(imageData, algorithm, brightness, contrast, threshold, noiseLevel);
+            const processed = applyDither(imageData, algorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur);
             setDitheredImageData(processed);
           } catch (error) {
             console.error('Error processing image:', error);
@@ -54,8 +64,28 @@ const Index = () => {
             setIsProcessing(false);
           }
         });
-      }, 100); // 100ms debounce
+      }, 100);
     };
+  }, [toast]);
+
+  const handleTemplateChange = useCallback((templateId: string) => {
+    const template = TEMPLATES.find(t => t.id === templateId);
+    if (!template) return;
+    
+    setSelectedTemplate(templateId);
+    setSelectedAlgorithm(template.defaultSettings.algorithm);
+    setBrightness(template.defaultSettings.brightness);
+    setContrast(template.defaultSettings.contrast);
+    setThreshold(template.defaultSettings.threshold);
+    setNoiseLevel(template.defaultSettings.noiseLevel);
+    setSaturation(template.defaultSettings.saturation || 100);
+    setPosterize(template.defaultSettings.posterize || 256);
+    setBlur(template.defaultSettings.blur || 0);
+    
+    toast({
+      title: "Template Applied!",
+      description: `Switched to ${template.name} preset`,
+    });
   }, [toast]);
 
   const handleImageUpload = useCallback((file: File) => {
@@ -87,7 +117,7 @@ const Index = () => {
       setDitheredImageData(null);
       
       // Process immediately with current settings
-      debouncedProcessImage(imageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel);
+      debouncedProcessImage(imageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur);
       
       toast({
         title: "Image Loaded",
@@ -104,7 +134,7 @@ const Index = () => {
     };
     
     img.src = URL.createObjectURL(file);
-  }, [selectedAlgorithm, brightness, contrast, threshold, noiseLevel, debouncedProcessImage, toast]);
+  }, [selectedAlgorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur, debouncedProcessImage, toast]);
 
   const handleRandomize = useCallback(() => {
     const randomAlgorithm = DITHER_ALGORITHMS[Math.floor(Math.random() * DITHER_ALGORITHMS.length)];
@@ -112,12 +142,18 @@ const Index = () => {
     const newContrast = Math.floor(Math.random() * 100) + 50; // 50-150
     const newThreshold = Math.floor(Math.random() * 200) + 50; // 50-250
     const newNoiseLevel = Math.floor(Math.random() * 30); // 0-30
+    const newSaturation = Math.floor(Math.random() * 100) + 50; // 50-150
+    const newPosterize = Math.floor(Math.random() * 256); // 0-256
+    const newBlur = Math.floor(Math.random() * 10); // 0-10
     
     setSelectedAlgorithm(randomAlgorithm.id);
     setBrightness(newBrightness);
     setContrast(newContrast);
     setThreshold(newThreshold);
     setNoiseLevel(newNoiseLevel);
+    setSaturation(newSaturation);
+    setPosterize(newPosterize);
+    setBlur(newBlur);
     
     toast({
       title: "Settings Randomized!",
@@ -126,17 +162,23 @@ const Index = () => {
   }, [toast]);
 
   const handleReset = useCallback(() => {
-    setBrightness(100);
-    setContrast(100);
-    setThreshold(128);
-    setNoiseLevel(0);
-    setSelectedAlgorithm('floyd-steinberg');
+    const template = TEMPLATES.find(t => t.id === selectedTemplate);
+    if (template) {
+      setBrightness(template.defaultSettings.brightness);
+      setContrast(template.defaultSettings.contrast);
+      setThreshold(template.defaultSettings.threshold);
+      setNoiseLevel(template.defaultSettings.noiseLevel);
+      setSaturation(template.defaultSettings.saturation || 100);
+      setPosterize(template.defaultSettings.posterize || 256);
+      setBlur(template.defaultSettings.blur || 0);
+      setSelectedAlgorithm(template.defaultSettings.algorithm);
+    }
     
     toast({
       title: "Settings Reset",
-      description: "All parameters restored to default values",
+      description: "All parameters restored to template defaults",
     });
-  }, [toast]);
+  }, [selectedTemplate, toast]);
 
   const handleExport = useCallback(() => {
     if (!ditheredImageData) return;
@@ -172,9 +214,9 @@ const Index = () => {
   // Process image when parameters change
   React.useEffect(() => {
     if (originalImageData) {
-      debouncedProcessImage(originalImageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel);
+      debouncedProcessImage(originalImageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur);
     }
-  }, [originalImageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel, debouncedProcessImage]);
+  }, [originalImageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur, debouncedProcessImage]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
@@ -210,6 +252,12 @@ const Index = () => {
         <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
           {/* Left Column - Controls */}
           <div className="xl:col-span-1 space-y-6">
+            <TemplateSelector
+              templates={TEMPLATES}
+              selectedTemplate={selectedTemplate}
+              onTemplateChange={handleTemplateChange}
+            />
+            
             <AlgorithmSelector
               algorithms={DITHER_ALGORITHMS}
               selectedAlgorithm={selectedAlgorithm}
@@ -221,15 +269,22 @@ const Index = () => {
               contrast={contrast}
               threshold={threshold}
               noiseLevel={noiseLevel}
+              saturation={saturation}
+              posterize={posterize}
+              blur={blur}
               onBrightnessChange={setBrightness}
               onContrastChange={setContrast}
               onThresholdChange={setThreshold}
               onNoiseLevelChange={setNoiseLevel}
+              onSaturationChange={setSaturation}
+              onPosterizeChange={setPosterize}
+              onBlurChange={setBlur}
               onRandomize={handleRandomize}
               onReset={handleReset}
               onExport={handleExport}
               canExport={!!ditheredImageData}
               isProcessing={isProcessing}
+              availableControls={currentTemplate?.availableControls || ['brightness', 'contrast', 'threshold', 'noiseLevel']}
             />
           </div>
 

@@ -82,18 +82,36 @@ export function applyDither(
   brightness: number = 100,
   contrast: number = 100,
   threshold: number = 128,
-  noiseLevel: number = 0
+  noiseLevel: number = 0,
+  saturation: number = 100,
+  posterize: number = 256,
+  blur: number = 0
 ): ImageData {
-  // Create a copy of the data to avoid modifying the original
   const data = new Uint8ClampedArray(imageData.data);
   const { width, height } = imageData;
   
-  // Apply brightness and contrast adjustments
+  // Apply blur effect first if needed
+  if (blur > 0) {
+    applyBlur(data, width, height, blur);
+  }
+  
+  // Apply brightness, contrast, and saturation adjustments
   for (let i = 0; i < data.length; i += 4) {
-    // Skip alpha channel adjustments
+    // Apply saturation
+    if (saturation !== 100) {
+      const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      const satFactor = saturation / 100;
+      
+      for (let channel = 0; channel < 3; channel++) {
+        data[i + channel] = Math.max(0, Math.min(255, 
+          gray + (data[i + channel] - gray) * satFactor
+        ));
+      }
+    }
+    
+    // Apply contrast (centered around 128)
+    const contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
     for (let channel = 0; channel < 3; channel++) {
-      // Apply contrast first (centered around 128)
-      const contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
       let value = contrastFactor * (data[i + channel] - 128) + 128;
       
       // Apply brightness
@@ -101,6 +119,14 @@ export function applyDither(
       
       // Clamp values
       data[i + channel] = Math.max(0, Math.min(255, value));
+    }
+    
+    // Apply posterization
+    if (posterize < 256) {
+      for (let channel = 0; channel < 3; channel++) {
+        const step = 255 / (posterize - 1);
+        data[i + channel] = Math.round(data[i + channel] / step) * step;
+      }
     }
   }
 
@@ -114,6 +140,7 @@ export function applyDither(
     }
   }
 
+  // Apply dithering algorithm
   switch (algorithm) {
     case 'floyd-steinberg':
       return floydSteinbergDither(data, width, height, threshold);
@@ -133,6 +160,43 @@ export function applyDither(
       return randomDither(data, width, height, threshold);
     default:
       return new ImageData(data, width, height);
+  }
+}
+
+function applyBlur(data: Uint8ClampedArray, width: number, height: number, radius: number) {
+  if (radius <= 0) return;
+  
+  const tempData = new Uint8ClampedArray(data);
+  const kernelSize = Math.ceil(radius * 2) + 1;
+  const sigma = radius / 3;
+  
+  // Simple box blur approximation for performance
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      let r = 0, g = 0, b = 0, count = 0;
+      
+      for (let dy = -Math.floor(kernelSize/2); dy <= Math.floor(kernelSize/2); dy++) {
+        for (let dx = -Math.floor(kernelSize/2); dx <= Math.floor(kernelSize/2); dx++) {
+          const ny = y + dy;
+          const nx = x + dx;
+          
+          if (ny >= 0 && ny < height && nx >= 0 && nx < width) {
+            const nIdx = (ny * width + nx) * 4;
+            r += tempData[nIdx];
+            g += tempData[nIdx + 1];
+            b += tempData[nIdx + 2];
+            count++;
+          }
+        }
+      }
+      
+      if (count > 0) {
+        data[idx] = r / count;
+        data[idx + 1] = g / count;
+        data[idx + 2] = b / count;
+      }
+    }
   }
 }
 
