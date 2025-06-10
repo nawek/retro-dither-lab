@@ -7,7 +7,7 @@ export interface Template {
   id: string;
   name: string;
   description: string;
-  icon: React.ReactNode;
+  icon: string;
   defaultSettings: {
     algorithm: string;
     brightness: number;
@@ -28,12 +28,26 @@ interface TemplateSelectorProps {
   onTemplateChange: (templateId: string) => void;
 }
 
+const iconComponents = {
+  Palette: Palette,
+  Gamepad2: Gamepad2,
+  Tv: Tv,
+  Camera: Camera,
+  Zap: Zap,
+  Sparkles: Sparkles,
+};
+
 const TemplateSelector: React.FC<TemplateSelectorProps> = ({
   templates,
   selectedTemplate,
   onTemplateChange,
 }) => {
   const categories = Array.from(new Set(templates.map(t => t.category)));
+
+  const getIcon = (iconName: string) => {
+    const IconComponent = iconComponents[iconName as keyof typeof iconComponents];
+    return IconComponent ? <IconComponent className="w-4 h-4" /> : <Palette className="w-4 h-4" />;
+  };
 
   return (
     <div className="space-y-4 bg-gray-900/50 backdrop-blur-sm p-6 rounded-lg border border-gray-700">
@@ -63,7 +77,7 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
                 >
                   <div className="flex items-center space-x-3">
                     <div className="text-cyan-400">
-                      {template.icon}
+                      {getIcon(template.icon)}
                     </div>
                     <div>
                       <div className="font-semibold text-sm">{template.name}</div>

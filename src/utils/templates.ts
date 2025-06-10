@@ -1,13 +1,12 @@
 
 import { Template } from '@/components/TemplateSelector';
-import { Palette, Gamepad2, Tv, Camera, Zap, Sparkles } from 'lucide-react';
 
 export const TEMPLATES: Template[] = [
   {
     id: 'classic-1bit',
     name: 'Classic 1-Bit',
     description: 'Pure black & white retro style',
-    icon: <Palette className="w-4 h-4" />,
+    icon: 'Palette',
     defaultSettings: {
       algorithm: 'floyd-steinberg',
       brightness: 100,
@@ -24,7 +23,7 @@ export const TEMPLATES: Template[] = [
     id: 'gameboy',
     name: 'Game Boy',
     description: 'Nintendo Game Boy green tint',
-    icon: <Gameboy2 className="w-4 h-4" />,
+    icon: 'Gamepad2',
     defaultSettings: {
       algorithm: 'bayer-4x4',
       brightness: 110,
@@ -41,7 +40,7 @@ export const TEMPLATES: Template[] = [
     id: 'crt-monitor',
     name: 'CRT Monitor',
     description: 'Old computer monitor effect',
-    icon: <Tv className="w-4 h-4" />,
+    icon: 'Tv',
     defaultSettings: {
       algorithm: 'bayer-8x8',
       brightness: 95,
@@ -58,7 +57,7 @@ export const TEMPLATES: Template[] = [
     id: 'newspaper',
     name: 'Newspaper',
     description: 'Classic halftone print style',
-    icon: <Camera className="w-4 h-4" />,
+    icon: 'Camera',
     defaultSettings: {
       algorithm: 'halftone-dots',
       brightness: 105,
@@ -75,7 +74,7 @@ export const TEMPLATES: Template[] = [
     id: 'cyberpunk',
     name: 'Cyberpunk',
     description: 'Futuristic glitch aesthetic',
-    icon: <Zap className="w-4 h-4" />,
+    icon: 'Zap',
     defaultSettings: {
       algorithm: 'random',
       brightness: 120,
@@ -92,7 +91,7 @@ export const TEMPLATES: Template[] = [
     id: 'vaporwave',
     name: 'Vaporwave',
     description: 'Dreamy 80s aesthetic',
-    icon: <Sparkles className="w-4 h-4" />,
+    icon: 'Sparkles',
     defaultSettings: {
       algorithm: 'atkinson',
       brightness: 115,
