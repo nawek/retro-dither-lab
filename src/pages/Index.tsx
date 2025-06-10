@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import ImageUploader from '@/components/ImageUploader';
 import DitherCanvas from '@/components/DitherCanvas';
 import AlgorithmSelector from '@/components/AlgorithmSelector';
@@ -14,34 +13,50 @@ const Index = () => {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('floyd-steinberg');
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
+  const [threshold, setThreshold] = useState(128);
+  const [noiseLevel, setNoiseLevel] = useState(0);
   const [isDragActive, setIsDragActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
-  const processImage = useCallback(async () => {
-    if (!originalImageData) return;
+  // Debounced processing function for real-time updates
+  const debouncedProcessImage = useMemo(() => {
+    let timeoutId: NodeJS.Timeout;
     
-    setIsProcessing(true);
-    
-    // Use setTimeout to allow UI to update
-    setTimeout(() => {
-      try {
-        const processed = applyDither(originalImageData, selectedAlgorithm, brightness, contrast);
-        setDitheredImageData(processed);
-      } catch (error) {
-        console.error('Error processing image:', error);
-        toast({
-          title: "Processing Error",
-          description: "Failed to apply dithering effect. Please try again.",
-          variant: "destructive",
+    return (
+      imageData: ImageData,
+      algorithm: string,
+      brightness: number,
+      contrast: number,
+      threshold: number,
+      noiseLevel: number
+    ) => {
+      clearTimeout(timeoutId);
+      
+      timeoutId = setTimeout(() => {
+        setIsProcessing(true);
+        
+        // Use requestAnimationFrame for smooth updates
+        requestAnimationFrame(() => {
+          try {
+            const processed = applyDither(imageData, algorithm, brightness, contrast, threshold, noiseLevel);
+            setDitheredImageData(processed);
+          } catch (error) {
+            console.error('Error processing image:', error);
+            toast({
+              title: "Processing Error",
+              description: "Failed to apply dithering effect. Please try again.",
+              variant: "destructive",
+            });
+          } finally {
+            setIsProcessing(false);
+          }
         });
-      } finally {
-        setIsProcessing(false);
-      }
-    }, 50);
-  }, [originalImageData, selectedAlgorithm, brightness, contrast, toast]);
+      }, 100); // 100ms debounce
+    };
+  }, [toast]);
 
   const handleImageUpload = useCallback((file: File) => {
     const img = new Image();
@@ -51,8 +66,8 @@ const Index = () => {
       
       if (!ctx) return;
       
-      // Limit canvas size for performance
-      const maxSize = 800;
+      // Limit canvas size for performance but keep quality
+      const maxSize = 1200;
       let { width, height } = img;
       
       if (width > maxSize || height > maxSize) {
@@ -71,24 +86,55 @@ const Index = () => {
       setOriginalImageData(imageData);
       setDitheredImageData(null);
       
+      // Process immediately with current settings
+      debouncedProcessImage(imageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel);
+      
       toast({
         title: "Image Loaded",
         description: `Ready to dither! Resolution: ${Math.round(width)}×${Math.round(height)}`,
       });
     };
     
+    img.onerror = () => {
+      toast({
+        title: "Upload Error",
+        description: "Failed to load image. Please try a different file.",
+        variant: "destructive",
+      });
+    };
+    
     img.src = URL.createObjectURL(file);
-  }, [toast]);
+  }, [selectedAlgorithm, brightness, contrast, threshold, noiseLevel, debouncedProcessImage, toast]);
 
   const handleRandomize = useCallback(() => {
     const randomAlgorithm = DITHER_ALGORITHMS[Math.floor(Math.random() * DITHER_ALGORITHMS.length)];
+    const newBrightness = Math.floor(Math.random() * 100) + 50; // 50-150
+    const newContrast = Math.floor(Math.random() * 100) + 50; // 50-150
+    const newThreshold = Math.floor(Math.random() * 200) + 50; // 50-250
+    const newNoiseLevel = Math.floor(Math.random() * 30); // 0-30
+    
     setSelectedAlgorithm(randomAlgorithm.id);
-    setBrightness(Math.floor(Math.random() * 100) + 50); // 50-150
-    setContrast(Math.floor(Math.random() * 100) + 50); // 50-150
+    setBrightness(newBrightness);
+    setContrast(newContrast);
+    setThreshold(newThreshold);
+    setNoiseLevel(newNoiseLevel);
     
     toast({
       title: "Settings Randomized!",
       description: `Applied ${randomAlgorithm.name} with random settings`,
+    });
+  }, [toast]);
+
+  const handleReset = useCallback(() => {
+    setBrightness(100);
+    setContrast(100);
+    setThreshold(128);
+    setNoiseLevel(0);
+    setSelectedAlgorithm('floyd-steinberg');
+    
+    toast({
+      title: "Settings Reset",
+      description: "All parameters restored to default values",
     });
   }, [toast]);
 
@@ -123,29 +169,39 @@ const Index = () => {
     }, 'image/png');
   }, [ditheredImageData, selectedAlgorithm, toast]);
 
+  // Process image when parameters change
   React.useEffect(() => {
     if (originalImageData) {
-      processImage();
+      debouncedProcessImage(originalImageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel);
     }
-  }, [originalImageData, selectedAlgorithm, brightness, contrast, processImage]);
+  }, [originalImageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel, debouncedProcessImage]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
       {/* Header */}
       <div className="bg-black/50 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-10">
         <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center space-x-4">
-            <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
-              <div className="w-4 h-4 bg-white rounded-sm opacity-80"></div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
+                <div className="w-4 h-4 bg-white rounded-sm opacity-80"></div>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold font-mono bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                  DITHER BOY
+                </h1>
+                <p className="text-gray-400 text-sm font-mono">
+                  RETRO PIXEL ART GENERATOR
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold font-mono bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                DITHER BOY
-              </h1>
-              <p className="text-gray-400 text-sm font-mono">
-                RETRO PIXEL ART GENERATOR
-              </p>
-            </div>
+            
+            {isProcessing && (
+              <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+                <span className="text-cyan-400 font-mono text-sm">LIVE PROCESSING...</span>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -163,11 +219,17 @@ const Index = () => {
             <ControlPanel
               brightness={brightness}
               contrast={contrast}
+              threshold={threshold}
+              noiseLevel={noiseLevel}
               onBrightnessChange={setBrightness}
               onContrastChange={setContrast}
+              onThresholdChange={setThreshold}
+              onNoiseLevelChange={setNoiseLevel}
               onRandomize={handleRandomize}
+              onReset={handleReset}
               onExport={handleExport}
               canExport={!!ditheredImageData}
+              isProcessing={isProcessing}
             />
           </div>
 
@@ -186,13 +248,20 @@ const Index = () => {
                 <div className="bg-gray-900/30 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold font-mono text-cyan-400">
-                      DITHERED OUTPUT
+                      LIVE PREVIEW
                     </h3>
-                    {isProcessing && (
-                      <div className="text-cyan-400 font-mono text-sm animate-pulse">
-                        PROCESSING...
-                      </div>
-                    )}
+                    <div className="flex items-center space-x-4">
+                      {ditheredImageData && (
+                        <span className="text-gray-400 font-mono text-sm">
+                          {ditheredImageData.width}×{ditheredImageData.height}
+                        </span>
+                      )}
+                      {isProcessing && (
+                        <div className="text-cyan-400 font-mono text-sm animate-pulse">
+                          UPDATING...
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="flex justify-center">
@@ -204,8 +273,8 @@ const Index = () => {
                       />
                     ) : (
                       <div className="w-full h-64 bg-gray-800 rounded-lg flex items-center justify-center">
-                        <div className="text-gray-500 font-mono">
-                          SELECT AN ALGORITHM TO BEGIN
+                        <div className="text-gray-500 font-mono animate-pulse">
+                          PROCESSING IMAGE...
                         </div>
                       </div>
                     )}

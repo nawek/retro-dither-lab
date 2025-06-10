@@ -2,26 +2,38 @@
 import React from 'react';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Download, Shuffle } from 'lucide-react';
+import { Download, Shuffle, RotateCcw } from 'lucide-react';
 
 interface ControlPanelProps {
   brightness: number;
   contrast: number;
+  threshold: number;
+  noiseLevel: number;
   onBrightnessChange: (value: number) => void;
   onContrastChange: (value: number) => void;
+  onThresholdChange: (value: number) => void;
+  onNoiseLevelChange: (value: number) => void;
   onRandomize: () => void;
+  onReset: () => void;
   onExport: () => void;
   canExport: boolean;
+  isProcessing: boolean;
 }
 
 const ControlPanel: React.FC<ControlPanelProps> = ({
   brightness,
   contrast,
+  threshold,
+  noiseLevel,
   onBrightnessChange,
   onContrastChange,
+  onThresholdChange,
+  onNoiseLevelChange,
   onRandomize,
+  onReset,
   onExport,
   canExport,
+  isProcessing,
 }) => {
   return (
     <div className="space-y-6 bg-gray-900/50 backdrop-blur-sm p-6 rounded-lg border border-gray-700">
@@ -29,9 +41,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         EFFECT CONTROLS
       </h3>
       
-      <div className="space-y-4">
+      <div className="space-y-6">
         <div>
-          <label className="block text-sm font-semibold text-cyan-400 font-mono mb-2">
+          <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
             BRIGHTNESS: {brightness}%
           </label>
           <Slider
@@ -39,13 +51,14 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             onValueChange={(value) => onBrightnessChange(value[0])}
             min={0}
             max={200}
-            step={1}
+            step={5}
             className="w-full"
+            disabled={isProcessing}
           />
         </div>
         
         <div>
-          <label className="block text-sm font-semibold text-cyan-400 font-mono mb-2">
+          <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
             CONTRAST: {contrast}%
           </label>
           <Slider
@@ -53,16 +66,57 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
             onValueChange={(value) => onContrastChange(value[0])}
             min={0}
             max={200}
+            step={5}
+            className="w-full"
+            disabled={isProcessing}
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
+            THRESHOLD: {threshold}
+          </label>
+          <Slider
+            value={[threshold]}
+            onValueChange={(value) => onThresholdChange(value[0])}
+            min={0}
+            max={255}
             step={1}
             className="w-full"
+            disabled={isProcessing}
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
+            NOISE LEVEL: {noiseLevel}%
+          </label>
+          <Slider
+            value={[noiseLevel]}
+            onValueChange={(value) => onNoiseLevelChange(value[0])}
+            min={0}
+            max={100}
+            step={1}
+            className="w-full"
+            disabled={isProcessing}
           />
         </div>
       </div>
       
       <div className="space-y-3 pt-4 border-t border-gray-700">
         <Button
+          onClick={onReset}
+          disabled={isProcessing}
+          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 disabled:from-gray-600 disabled:to-gray-700 text-white font-mono font-bold"
+        >
+          <RotateCcw className="w-4 h-4 mr-2" />
+          RESET
+        </Button>
+        
+        <Button
           onClick={onRandomize}
-          className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-mono font-bold"
+          disabled={isProcessing}
+          className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 disabled:from-gray-600 disabled:to-gray-700 text-white font-mono font-bold"
         >
           <Shuffle className="w-4 h-4 mr-2" />
           RANDOMIZE
@@ -70,11 +124,11 @@ const ControlPanel: React.FC<ControlPanelProps> = ({
         
         <Button
           onClick={onExport}
-          disabled={!canExport}
+          disabled={!canExport || isProcessing}
           className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-400 hover:to-teal-400 disabled:from-gray-600 disabled:to-gray-700 text-white font-mono font-bold"
         >
           <Download className="w-4 h-4 mr-2" />
-          EXPORT PNG
+          {isProcessing ? 'PROCESSING...' : 'EXPORT PNG'}
         </Button>
       </div>
     </div>

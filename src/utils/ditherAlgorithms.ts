@@ -80,243 +80,175 @@ export function applyDither(
   imageData: ImageData,
   algorithm: string,
   brightness: number = 100,
-  contrast: number = 100
+  contrast: number = 100,
+  threshold: number = 128,
+  noiseLevel: number = 0
 ): ImageData {
+  // Create a copy of the data to avoid modifying the original
   const data = new Uint8ClampedArray(imageData.data);
   const { width, height } = imageData;
   
   // Apply brightness and contrast adjustments
   for (let i = 0; i < data.length; i += 4) {
-    // Apply contrast first
-    const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-    data[i] = Math.max(0, Math.min(255, factor * (data[i] - 128) + 128));
-    data[i + 1] = Math.max(0, Math.min(255, factor * (data[i + 1] - 128) + 128));
-    data[i + 2] = Math.max(0, Math.min(255, factor * (data[i + 2] - 128) + 128));
-    
-    // Apply brightness
-    data[i] = Math.max(0, Math.min(255, data[i] * (brightness / 100)));
-    data[i + 1] = Math.max(0, Math.min(255, data[i + 1] * (brightness / 100)));
-    data[i + 2] = Math.max(0, Math.min(255, data[i + 2] * (brightness / 100)));
+    // Skip alpha channel adjustments
+    for (let channel = 0; channel < 3; channel++) {
+      // Apply contrast first (centered around 128)
+      const contrastFactor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+      let value = contrastFactor * (data[i + channel] - 128) + 128;
+      
+      // Apply brightness
+      value = value * (brightness / 100);
+      
+      // Clamp values
+      data[i + channel] = Math.max(0, Math.min(255, value));
+    }
+  }
+
+  // Add noise if specified
+  if (noiseLevel > 0) {
+    for (let i = 0; i < data.length; i += 4) {
+      for (let channel = 0; channel < 3; channel++) {
+        const noise = (Math.random() - 0.5) * noiseLevel * 2.55;
+        data[i + channel] = Math.max(0, Math.min(255, data[i + channel] + noise));
+      }
+    }
   }
 
   switch (algorithm) {
     case 'floyd-steinberg':
-      return floydSteinbergDither(data, width, height);
+      return floydSteinbergDither(data, width, height, threshold);
     case 'atkinson':
-      return atkinsonDither(data, width, height);
+      return atkinsonDither(data, width, height, threshold);
     case 'stucki':
-      return stuckiDither(data, width, height);
+      return stuckiDither(data, width, height, threshold);
     case 'bayer-2x2':
-      return bayerDither(data, width, height, BAYER_2X2);
+      return bayerDither(data, width, height, BAYER_2X2, threshold);
     case 'bayer-4x4':
-      return bayerDither(data, width, height, BAYER_4X4);
+      return bayerDither(data, width, height, BAYER_4X4, threshold);
     case 'bayer-8x8':
-      return bayerDither(data, width, height, BAYER_8X8);
+      return bayerDither(data, width, height, BAYER_8X8, threshold);
     case 'halftone-dots':
-      return halftoneDither(data, width, height);
+      return halftoneDither(data, width, height, threshold);
     case 'random':
-      return randomDither(data, width, height);
+      return randomDither(data, width, height, threshold);
     default:
       return new ImageData(data, width, height);
   }
 }
 
-function floydSteinbergDither(data: Uint8ClampedArray, width: number, height: number): ImageData {
+function floydSteinbergDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
       
       // Convert to grayscale
       const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-      const newGray = gray < 128 ? 0 : 255;
+      const newGray = gray >= threshold ? 255 : 0;
       const error = gray - newGray;
       
       // Set pixel to black or white
       data[idx] = data[idx + 1] = data[idx + 2] = newGray;
       
-      // Distribute error
-      if (x + 1 < width) {
-        const rightIdx = (y * width + x + 1) * 4;
-        data[rightIdx] = Math.max(0, Math.min(255, data[rightIdx] + error * 7/16));
-        data[rightIdx + 1] = Math.max(0, Math.min(255, data[rightIdx + 1] + error * 7/16));
-        data[rightIdx + 2] = Math.max(0, Math.min(255, data[rightIdx + 2] + error * 7/16));
-      }
+      // Distribute error using Floyd-Steinberg matrix
+      const positions = [
+        { x: x + 1, y: y, factor: 7/16 },
+        { x: x - 1, y: y + 1, factor: 3/16 },
+        { x: x, y: y + 1, factor: 5/16 },
+        { x: x + 1, y: y + 1, factor: 1/16 }
+      ];
       
-      if (y + 1 < height) {
-        if (x - 1 >= 0) {
-          const bottomLeftIdx = ((y + 1) * width + x - 1) * 4;
-          data[bottomLeftIdx] = Math.max(0, Math.min(255, data[bottomLeftIdx] + error * 3/16));
-          data[bottomLeftIdx + 1] = Math.max(0, Math.min(255, data[bottomLeftIdx + 1] + error * 3/16));
-          data[bottomLeftIdx + 2] = Math.max(0, Math.min(255, data[bottomLeftIdx + 2] + error * 3/16));
+      positions.forEach(({ x: nx, y: ny, factor }) => {
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nIdx = (ny * width + nx) * 4;
+          const errorValue = error * factor;
+          for (let c = 0; c < 3; c++) {
+            data[nIdx + c] = Math.max(0, Math.min(255, data[nIdx + c] + errorValue));
+          }
         }
-        
-        const bottomIdx = ((y + 1) * width + x) * 4;
-        data[bottomIdx] = Math.max(0, Math.min(255, data[bottomIdx] + error * 5/16));
-        data[bottomIdx + 1] = Math.max(0, Math.min(255, data[bottomIdx + 1] + error * 5/16));
-        data[bottomIdx + 2] = Math.max(0, Math.min(255, data[bottomIdx + 2] + error * 5/16));
-        
-        if (x + 1 < width) {
-          const bottomRightIdx = ((y + 1) * width + x + 1) * 4;
-          data[bottomRightIdx] = Math.max(0, Math.min(255, data[bottomRightIdx] + error * 1/16));
-          data[bottomRightIdx + 1] = Math.max(0, Math.min(255, data[bottomRightIdx + 1] + error * 1/16));
-          data[bottomRightIdx + 2] = Math.max(0, Math.min(255, data[bottomRightIdx + 2] + error * 1/16));
-        }
-      }
+      });
     }
   }
   
   return new ImageData(data, width, height);
 }
 
-function atkinsonDither(data: Uint8ClampedArray, width: number, height: number): ImageData {
+function atkinsonDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
       
       const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-      const newGray = gray < 128 ? 0 : 255;
+      const newGray = gray >= threshold ? 255 : 0;
       const error = gray - newGray;
       
       data[idx] = data[idx + 1] = data[idx + 2] = newGray;
       
       // Atkinson dithering pattern
       const errorFraction = error / 8;
+      const positions = [
+        { x: x + 1, y: y },
+        { x: x + 2, y: y },
+        { x: x - 1, y: y + 1 },
+        { x: x, y: y + 1 },
+        { x: x + 1, y: y + 1 },
+        { x: x, y: y + 2 }
+      ];
       
-      if (x + 1 < width) {
-        const rightIdx = (y * width + x + 1) * 4;
-        data[rightIdx] = Math.max(0, Math.min(255, data[rightIdx] + errorFraction));
-        data[rightIdx + 1] = Math.max(0, Math.min(255, data[rightIdx + 1] + errorFraction));
-        data[rightIdx + 2] = Math.max(0, Math.min(255, data[rightIdx + 2] + errorFraction));
-      }
-      
-      if (x + 2 < width) {
-        const rightIdx2 = (y * width + x + 2) * 4;
-        data[rightIdx2] = Math.max(0, Math.min(255, data[rightIdx2] + errorFraction));
-        data[rightIdx2 + 1] = Math.max(0, Math.min(255, data[rightIdx2 + 1] + errorFraction));
-        data[rightIdx2 + 2] = Math.max(0, Math.min(255, data[rightIdx2 + 2] + errorFraction));
-      }
-      
-      if (y + 1 < height) {
-        if (x - 1 >= 0) {
-          const bottomLeftIdx = ((y + 1) * width + x - 1) * 4;
-          data[bottomLeftIdx] = Math.max(0, Math.min(255, data[bottomLeftIdx] + errorFraction));
-          data[bottomLeftIdx + 1] = Math.max(0, Math.min(255, data[bottomLeftIdx + 1] + errorFraction));
-          data[bottomLeftIdx + 2] = Math.max(0, Math.min(255, data[bottomLeftIdx + 2] + errorFraction));
+      positions.forEach(({ x: nx, y: ny }) => {
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nIdx = (ny * width + nx) * 4;
+          for (let c = 0; c < 3; c++) {
+            data[nIdx + c] = Math.max(0, Math.min(255, data[nIdx + c] + errorFraction));
+          }
         }
-        
-        const bottomIdx = ((y + 1) * width + x) * 4;
-        data[bottomIdx] = Math.max(0, Math.min(255, data[bottomIdx] + errorFraction));
-        data[bottomIdx + 1] = Math.max(0, Math.min(255, data[bottomIdx + 1] + errorFraction));
-        data[bottomIdx + 2] = Math.max(0, Math.min(255, data[bottomIdx + 2] + errorFraction));
-        
-        if (x + 1 < width) {
-          const bottomRightIdx = ((y + 1) * width + x + 1) * 4;
-          data[bottomRightIdx] = Math.max(0, Math.min(255, data[bottomRightIdx] + errorFraction));
-          data[bottomRightIdx + 1] = Math.max(0, Math.min(255, data[bottomRightIdx + 1] + errorFraction));
-          data[bottomRightIdx + 2] = Math.max(0, Math.min(255, data[bottomRightIdx + 2] + errorFraction));
-        }
-      }
-      
-      if (y + 2 < height) {
-        const bottom2Idx = ((y + 2) * width + x) * 4;
-        data[bottom2Idx] = Math.max(0, Math.min(255, data[bottom2Idx] + errorFraction));
-        data[bottom2Idx + 1] = Math.max(0, Math.min(255, data[bottom2Idx + 1] + errorFraction));
-        data[bottom2Idx + 2] = Math.max(0, Math.min(255, data[bottom2Idx + 2] + errorFraction));
-      }
+      });
     }
   }
   
   return new ImageData(data, width, height);
 }
 
-function stuckiDither(data: Uint8ClampedArray, width: number, height: number): ImageData {
+function stuckiDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
       
       const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-      const newGray = gray < 128 ? 0 : 255;
+      const newGray = gray >= threshold ? 255 : 0;
       const error = gray - newGray;
       
       data[idx] = data[idx + 1] = data[idx + 2] = newGray;
       
       // Stucki error distribution
-      if (x + 1 < width) {
-        const rightIdx = (y * width + x + 1) * 4;
-        data[rightIdx] = Math.max(0, Math.min(255, data[rightIdx] + error * 8/42));
-        data[rightIdx + 1] = Math.max(0, Math.min(255, data[rightIdx + 1] + error * 8/42));
-        data[rightIdx + 2] = Math.max(0, Math.min(255, data[rightIdx + 2] + error * 8/42));
-      }
+      const positions = [
+        { x: x + 1, y: y, factor: 8/42 },
+        { x: x + 2, y: y, factor: 4/42 },
+        { x: x - 2, y: y + 1, factor: 2/42 },
+        { x: x - 1, y: y + 1, factor: 4/42 },
+        { x: x, y: y + 1, factor: 8/42 },
+        { x: x + 1, y: y + 1, factor: 4/42 },
+        { x: x + 2, y: y + 1, factor: 2/42 },
+        { x: x - 1, y: y + 2, factor: 2/42 },
+        { x: x, y: y + 2, factor: 4/42 },
+        { x: x + 1, y: y + 2, factor: 2/42 }
+      ];
       
-      if (x + 2 < width) {
-        const right2Idx = (y * width + x + 2) * 4;
-        data[right2Idx] = Math.max(0, Math.min(255, data[right2Idx] + error * 4/42));
-        data[right2Idx + 1] = Math.max(0, Math.min(255, data[right2Idx + 1] + error * 4/42));
-        data[right2Idx + 2] = Math.max(0, Math.min(255, data[right2Idx + 2] + error * 4/42));
-      }
-      
-      if (y + 1 < height) {
-        if (x - 2 >= 0) {
-          const bottomLeft2Idx = ((y + 1) * width + x - 2) * 4;
-          data[bottomLeft2Idx] = Math.max(0, Math.min(255, data[bottomLeft2Idx] + error * 2/42));
-          data[bottomLeft2Idx + 1] = Math.max(0, Math.min(255, data[bottomLeft2Idx + 1] + error * 2/42));
-          data[bottomLeft2Idx + 2] = Math.max(0, Math.min(255, data[bottomLeft2Idx + 2] + error * 2/42));
+      positions.forEach(({ x: nx, y: ny, factor }) => {
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nIdx = (ny * width + nx) * 4;
+          const errorValue = error * factor;
+          for (let c = 0; c < 3; c++) {
+            data[nIdx + c] = Math.max(0, Math.min(255, data[nIdx + c] + errorValue));
+          }
         }
-        
-        if (x - 1 >= 0) {
-          const bottomLeftIdx = ((y + 1) * width + x - 1) * 4;
-          data[bottomLeftIdx] = Math.max(0, Math.min(255, data[bottomLeftIdx] + error * 4/42));
-          data[bottomLeftIdx + 1] = Math.max(0, Math.min(255, data[bottomLeftIdx + 1] + error * 4/42));
-          data[bottomLeftIdx + 2] = Math.max(0, Math.min(255, data[bottomLeftIdx + 2] + error * 4/42));
-        }
-        
-        const bottomIdx = ((y + 1) * width + x) * 4;
-        data[bottomIdx] = Math.max(0, Math.min(255, data[bottomIdx] + error * 8/42));
-        data[bottomIdx + 1] = Math.max(0, Math.min(255, data[bottomIdx + 1] + error * 8/42));
-        data[bottomIdx + 2] = Math.max(0, Math.min(255, data[bottomIdx + 2] + error * 8/42));
-        
-        if (x + 1 < width) {
-          const bottomRightIdx = ((y + 1) * width + x + 1) * 4;
-          data[bottomRightIdx] = Math.max(0, Math.min(255, data[bottomRightIdx] + error * 4/42));
-          data[bottomRightIdx + 1] = Math.max(0, Math.min(255, data[bottomRightIdx + 1] + error * 4/42));
-          data[bottomRightIdx + 2] = Math.max(0, Math.min(255, data[bottomRightIdx + 2] + error * 4/42));
-        }
-        
-        if (x + 2 < width) {
-          const bottomRight2Idx = ((y + 1) * width + x + 2) * 4;
-          data[bottomRight2Idx] = Math.max(0, Math.min(255, data[bottomRight2Idx] + error * 2/42));
-          data[bottomRight2Idx + 1] = Math.max(0, Math.min(255, data[bottomRight2Idx + 1] + error * 2/42));
-          data[bottomRight2Idx + 2] = Math.max(0, Math.min(255, data[bottomRight2Idx + 2] + error * 2/42));
-        }
-      }
-      
-      if (y + 2 < height) {
-        if (x - 1 >= 0) {
-          const bottom2LeftIdx = ((y + 2) * width + x - 1) * 4;
-          data[bottom2LeftIdx] = Math.max(0, Math.min(255, data[bottom2LeftIdx] + error * 2/42));
-          data[bottom2LeftIdx + 1] = Math.max(0, Math.min(255, data[bottom2LeftIdx + 1] + error * 2/42));
-          data[bottom2LeftIdx + 2] = Math.max(0, Math.min(255, data[bottom2LeftIdx + 2] + error * 2/42));
-        }
-        
-        const bottom2Idx = ((y + 2) * width + x) * 4;
-        data[bottom2Idx] = Math.max(0, Math.min(255, data[bottom2Idx] + error * 4/42));
-        data[bottom2Idx + 1] = Math.max(0, Math.min(255, data[bottom2Idx + 1] + error * 4/42));
-        data[bottom2Idx + 2] = Math.max(0, Math.min(255, data[bottom2Idx + 2] + error * 4/42));
-        
-        if (x + 1 < width) {
-          const bottom2RightIdx = ((y + 2) * width + x + 1) * 4;
-          data[bottom2RightIdx] = Math.max(0, Math.min(255, data[bottom2RightIdx] + error * 2/42));
-          data[bottom2RightIdx + 1] = Math.max(0, Math.min(255, data[bottom2RightIdx + 1] + error * 2/42));
-          data[bottom2RightIdx + 2] = Math.max(0, Math.min(255, data[bottom2RightIdx + 2] + error * 2/42));
-        }
-      }
+      });
     }
   }
   
   return new ImageData(data, width, height);
 }
 
-function bayerDither(data: Uint8ClampedArray, width: number, height: number, matrix: number[][]): ImageData {
+function bayerDither(data: Uint8ClampedArray, width: number, height: number, matrix: number[][], threshold: number): ImageData {
   const matrixSize = matrix.length;
   const maxValue = matrixSize * matrixSize - 1;
   
@@ -325,8 +257,9 @@ function bayerDither(data: Uint8ClampedArray, width: number, height: number, mat
       const idx = (y * width + x) * 4;
       
       const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
-      const threshold = (matrix[y % matrixSize][x % matrixSize] / maxValue) * 255;
-      const newGray = gray > threshold ? 255 : 0;
+      const bayerValue = (matrix[y % matrixSize][x % matrixSize] / maxValue) * 255;
+      const adjustedThreshold = threshold + (bayerValue - 128);
+      const newGray = gray >= adjustedThreshold ? 255 : 0;
       
       data[idx] = data[idx + 1] = data[idx + 2] = newGray;
     }
@@ -335,7 +268,7 @@ function bayerDither(data: Uint8ClampedArray, width: number, height: number, mat
   return new ImageData(data, width, height);
 }
 
-function halftoneDither(data: Uint8ClampedArray, width: number, height: number): ImageData {
+function halftoneDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
   const dotSize = 8;
   
   for (let y = 0; y < height; y += dotSize) {
@@ -353,7 +286,8 @@ function halftoneDither(data: Uint8ClampedArray, width: number, height: number):
       }
       
       const avgBrightness = totalBrightness / pixelCount;
-      const dotRadius = Math.sqrt((avgBrightness / 255) * (dotSize * dotSize / 4) / Math.PI);
+      const normalizedThreshold = threshold / 255;
+      const dotRadius = Math.sqrt(((avgBrightness / 255) - normalizedThreshold + 1) * (dotSize * dotSize / 4) / Math.PI);
       const centerX = dotSize / 2;
       const centerY = dotSize / 2;
       
@@ -362,7 +296,7 @@ function halftoneDither(data: Uint8ClampedArray, width: number, height: number):
         for (let dx = 0; dx < dotSize && x + dx < width; dx++) {
           const distance = Math.sqrt((dx - centerX) ** 2 + (dy - centerY) ** 2);
           const idx = ((y + dy) * width + (x + dx)) * 4;
-          const value = distance <= dotRadius ? 0 : 255;
+          const value = distance <= Math.max(0, dotRadius) ? 0 : 255;
           
           data[idx] = data[idx + 1] = data[idx + 2] = value;
         }
@@ -373,11 +307,11 @@ function halftoneDither(data: Uint8ClampedArray, width: number, height: number):
   return new ImageData(data, width, height);
 }
 
-function randomDither(data: Uint8ClampedArray, width: number, height: number): ImageData {
+function randomDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
   for (let i = 0; i < data.length; i += 4) {
     const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-    const threshold = Math.random() * 255;
-    const newGray = gray > threshold ? 255 : 0;
+    const randomThreshold = threshold + (Math.random() - 0.5) * 100;
+    const newGray = gray >= randomThreshold ? 255 : 0;
     
     data[i] = data[i + 1] = data[i + 2] = newGray;
   }
