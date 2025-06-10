@@ -1,4 +1,3 @@
-
 import { DitherAlgorithm } from '@/components/AlgorithmSelector';
 
 export const DITHER_ALGORITHMS: DitherAlgorithm[] = [
@@ -49,6 +48,36 @@ export const DITHER_ALGORITHMS: DitherAlgorithm[] = [
     name: 'Random Noise',
     description: 'Chaotic pixel-based dithering',
     category: 'Experimental'
+  },
+  {
+    id: 'datamosh',
+    name: 'Datamosh',
+    description: 'Digital compression artifacts',
+    category: 'Glitch'
+  },
+  {
+    id: 'pixel-sort',
+    name: 'Pixel Sort',
+    description: 'Sorted pixel glitch effect',
+    category: 'Glitch'
+  },
+  {
+    id: 'scanline-displacement',
+    name: 'Scanline Glitch',
+    description: 'Horizontal line displacement',
+    category: 'Glitch'
+  },
+  {
+    id: 'rgb-shift',
+    name: 'RGB Shift',
+    description: 'Chromatic aberration effect',
+    category: 'Glitch'
+  },
+  {
+    id: 'bit-crush',
+    name: 'Bit Crush',
+    description: 'Reduce color bit depth',
+    category: 'Glitch'
   }
 ];
 
@@ -140,7 +169,7 @@ export function applyDither(
     }
   }
 
-  // Apply dithering algorithm
+  // Apply dithering/glitch algorithm
   switch (algorithm) {
     case 'floyd-steinberg':
       return floydSteinbergDither(data, width, height, threshold);
@@ -158,6 +187,16 @@ export function applyDither(
       return halftoneDither(data, width, height, threshold);
     case 'random':
       return randomDither(data, width, height, threshold);
+    case 'datamosh':
+      return datamoshEffect(data, width, height, noiseLevel);
+    case 'pixel-sort':
+      return pixelSortEffect(data, width, height, threshold);
+    case 'scanline-displacement':
+      return scanlineGlitch(data, width, height, noiseLevel);
+    case 'rgb-shift':
+      return rgbShiftEffect(data, width, height, noiseLevel);
+    case 'bit-crush':
+      return bitCrushEffect(data, width, height, posterize);
     default:
       return new ImageData(data, width, height);
   }
@@ -378,6 +417,163 @@ function randomDither(data: Uint8ClampedArray, width: number, height: number, th
     const newGray = gray >= randomThreshold ? 255 : 0;
     
     data[i] = data[i + 1] = data[i + 2] = newGray;
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+// New glitch effects
+function datamoshEffect(data: Uint8ClampedArray, width: number, height: number, intensity: number): ImageData {
+  const blockSize = Math.max(2, Math.floor(intensity / 10) + 2);
+  const compressionRate = intensity / 100;
+  
+  // Create compression artifacts by averaging blocks and adding displacement
+  for (let y = 0; y < height; y += blockSize) {
+    for (let x = 0; x < width; x += blockSize) {
+      // Calculate average color in block
+      let avgR = 0, avgG = 0, avgB = 0, count = 0;
+      
+      for (let dy = 0; dy < blockSize && y + dy < height; dy++) {
+        for (let dx = 0; dx < blockSize && x + dx < width; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          avgR += data[idx];
+          avgG += data[idx + 1];
+          avgB += data[idx + 2];
+          count++;
+        }
+      }
+      
+      avgR /= count;
+      avgG /= count;
+      avgB /= count;
+      
+      // Apply compression effect with some random displacement
+      for (let dy = 0; dy < blockSize && y + dy < height; dy++) {
+        for (let dx = 0; dx < blockSize && x + dx < width; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          
+          // Mix original with averaged color based on compression rate
+          data[idx] = avgR * compressionRate + data[idx] * (1 - compressionRate);
+          data[idx + 1] = avgG * compressionRate + data[idx + 1] * (1 - compressionRate);
+          data[idx + 2] = avgB * compressionRate + data[idx + 2] * (1 - compressionRate);
+          
+          // Add some random artifacts
+          if (Math.random() < compressionRate * 0.1) {
+            data[idx] = Math.random() * 255;
+            data[idx + 1] = Math.random() * 255;
+            data[idx + 2] = Math.random() * 255;
+          }
+        }
+      }
+    }
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+function pixelSortEffect(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
+  const sortIntensity = threshold / 255;
+  
+  // Sort pixels horizontally based on brightness
+  for (let y = 0; y < height; y++) {
+    if (Math.random() < sortIntensity) {
+      const row: Array<{r: number, g: number, b: number, brightness: number}> = [];
+      
+      // Extract row data
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        const brightness = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+        row.push({
+          r: data[idx],
+          g: data[idx + 1],
+          b: data[idx + 2],
+          brightness
+        });
+      }
+      
+      // Sort by brightness
+      row.sort((a, b) => a.brightness - b.brightness);
+      
+      // Put sorted data back
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        data[idx] = row[x].r;
+        data[idx + 1] = row[x].g;
+        data[idx + 2] = row[x].b;
+      }
+    }
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+function scanlineGlitch(data: Uint8ClampedArray, width: number, height: number, intensity: number): ImageData {
+  const displacement = Math.floor(intensity / 2);
+  
+  for (let y = 0; y < height; y++) {
+    if (Math.random() < intensity / 100) {
+      const shift = Math.floor((Math.random() - 0.5) * displacement * 2);
+      const tempRow = new Uint8ClampedArray(width * 4);
+      
+      // Copy original row
+      for (let x = 0; x < width; x++) {
+        const idx = (y * width + x) * 4;
+        tempRow[x * 4] = data[idx];
+        tempRow[x * 4 + 1] = data[idx + 1];
+        tempRow[x * 4 + 2] = data[idx + 2];
+        tempRow[x * 4 + 3] = data[idx + 3];
+      }
+      
+      // Apply shifted row
+      for (let x = 0; x < width; x++) {
+        const sourceX = Math.max(0, Math.min(width - 1, x - shift));
+        const idx = (y * width + x) * 4;
+        const sourceIdx = sourceX * 4;
+        
+        data[idx] = tempRow[sourceIdx];
+        data[idx + 1] = tempRow[sourceIdx + 1];
+        data[idx + 2] = tempRow[sourceIdx + 2];
+      }
+    }
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+function rgbShiftEffect(data: Uint8ClampedArray, width: number, height: number, intensity: number): ImageData {
+  const shift = Math.floor(intensity / 5);
+  const tempData = new Uint8ClampedArray(data);
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      
+      // Red channel shift
+      const redX = Math.max(0, Math.min(width - 1, x + shift));
+      const redIdx = (y * width + redX) * 4;
+      data[idx] = tempData[redIdx];
+      
+      // Green channel (no shift)
+      data[idx + 1] = tempData[idx + 1];
+      
+      // Blue channel shift opposite direction
+      const blueX = Math.max(0, Math.min(width - 1, x - shift));
+      const blueIdx = (y * width + blueX) * 4;
+      data[idx + 2] = tempData[blueIdx + 2];
+    }
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+function bitCrushEffect(data: Uint8ClampedArray, width: number, height: number, bitDepth: number): ImageData {
+  const levels = Math.max(2, Math.min(256, bitDepth));
+  const step = 255 / (levels - 1);
+  
+  for (let i = 0; i < data.length; i += 4) {
+    for (let channel = 0; channel < 3; channel++) {
+      data[i + channel] = Math.round(data[i + channel] / step) * step;
+    }
   }
   
   return new ImageData(data, width, height);

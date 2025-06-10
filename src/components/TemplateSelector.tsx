@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Palette, Gamepad2, Tv, Camera, Zap, Sparkles } from 'lucide-react';
+import { Palette, Gamepad2, Tv, Camera, Zap, Sparkles, Shuffle, Monitor, Eye, Cpu } from 'lucide-react';
 
 export interface Template {
   id: string;
@@ -35,6 +34,10 @@ const iconComponents = {
   Camera: Camera,
   Zap: Zap,
   Sparkles: Sparkles,
+  Shuffle: Shuffle,
+  Monitor: Monitor,
+  Eye: Eye,
+  Cpu: Cpu,
 };
 
 const TemplateSelector: React.FC<TemplateSelectorProps> = ({

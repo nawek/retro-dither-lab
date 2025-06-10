@@ -104,5 +104,90 @@ export const TEMPLATES: Template[] = [
     },
     availableControls: ['brightness', 'contrast', 'threshold', 'noiseLevel', 'saturation', 'posterize', 'blur'],
     category: 'Modern'
+  },
+  {
+    id: 'datamosh',
+    name: 'Datamosh',
+    description: 'Digital compression glitch',
+    icon: 'Zap',
+    defaultSettings: {
+      algorithm: 'datamosh',
+      brightness: 100,
+      contrast: 110,
+      threshold: 128,
+      noiseLevel: 50,
+      saturation: 120,
+      posterize: 16
+    },
+    availableControls: ['brightness', 'contrast', 'noiseLevel', 'saturation', 'posterize'],
+    category: 'Glitch'
+  },
+  {
+    id: 'pixel-storm',
+    name: 'Pixel Storm',
+    description: 'Chaotic pixel sorting effect',
+    icon: 'Shuffle',
+    defaultSettings: {
+      algorithm: 'pixel-sort',
+      brightness: 105,
+      contrast: 130,
+      threshold: 180,
+      noiseLevel: 30,
+      saturation: 140,
+      posterize: 32
+    },
+    availableControls: ['brightness', 'contrast', 'threshold', 'noiseLevel', 'saturation'],
+    category: 'Glitch'
+  },
+  {
+    id: 'scanline-chaos',
+    name: 'Scanline Chaos',
+    description: 'Horizontal displacement glitch',
+    icon: 'Monitor',
+    defaultSettings: {
+      algorithm: 'scanline-displacement',
+      brightness: 110,
+      contrast: 120,
+      threshold: 128,
+      noiseLevel: 40,
+      saturation: 110,
+      posterize: 64
+    },
+    availableControls: ['brightness', 'contrast', 'noiseLevel', 'saturation', 'posterize'],
+    category: 'Glitch'
+  },
+  {
+    id: 'rgb-nightmare',
+    name: 'RGB Nightmare',
+    description: 'Chromatic aberration chaos',
+    icon: 'Eye',
+    defaultSettings: {
+      algorithm: 'rgb-shift',
+      brightness: 115,
+      contrast: 140,
+      threshold: 128,
+      noiseLevel: 60,
+      saturation: 160,
+      posterize: 128
+    },
+    availableControls: ['brightness', 'contrast', 'noiseLevel', 'saturation', 'posterize'],
+    category: 'Glitch'
+  },
+  {
+    id: 'bit-destroyer',
+    name: 'Bit Destroyer',
+    description: 'Extreme bit crushing effect',
+    icon: 'Cpu',
+    defaultSettings: {
+      algorithm: 'bit-crush',
+      brightness: 100,
+      contrast: 150,
+      threshold: 128,
+      noiseLevel: 20,
+      saturation: 80,
+      posterize: 4
+    },
+    availableControls: ['brightness', 'contrast', 'noiseLevel', 'saturation', 'posterize'],
+    category: 'Glitch'
   }
 ];
