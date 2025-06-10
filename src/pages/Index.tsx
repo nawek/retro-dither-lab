@@ -7,6 +7,7 @@ import TemplateSelector from '@/components/TemplateSelector';
 import { DITHER_ALGORITHMS, applyDither } from '@/utils/ditherAlgorithms';
 import { TEMPLATES } from '@/utils/templates';
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const Index = () => {
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
@@ -219,148 +220,129 @@ const Index = () => {
   }, [originalImageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur, debouncedProcessImage]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
-      {/* Header */}
-      <div className="bg-black/50 backdrop-blur-sm border-b border-gray-800 sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
-                <div className="w-4 h-4 bg-white rounded-sm opacity-80"></div>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold font-mono bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                  DITHER BOY
-                </h1>
-                <p className="text-gray-400 text-sm font-mono">
-                  RETRO PIXEL ART GENERATOR
-                </p>
-              </div>
+    <div className="h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col">
+      {/* Compact Header */}
+      <div className="bg-black/50 backdrop-blur-sm border-b border-gray-800 px-6 py-2 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-6 h-6 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
+              <div className="w-3 h-3 bg-white rounded-sm opacity-80"></div>
             </div>
-            
-            {isProcessing && (
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
-                <span className="text-cyan-400 font-mono text-sm">LIVE PROCESSING...</span>
-              </div>
-            )}
+            <div>
+              <h1 className="text-xl font-bold font-mono bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                DITHER BOY
+              </h1>
+              <p className="text-gray-400 text-xs font-mono">RETRO PIXEL ART GENERATOR</p>
+            </div>
           </div>
+          
+          {isProcessing && (
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+              <span className="text-cyan-400 font-mono text-xs">PROCESSING...</span>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-          {/* Left Column - Controls */}
-          <div className="xl:col-span-1 space-y-6">
-            <TemplateSelector
-              templates={TEMPLATES}
-              selectedTemplate={selectedTemplate}
-              onTemplateChange={handleTemplateChange}
-            />
-            
-            <AlgorithmSelector
-              algorithms={DITHER_ALGORITHMS}
-              selectedAlgorithm={selectedAlgorithm}
-              onAlgorithmChange={setSelectedAlgorithm}
-            />
-            
-            <ControlPanel
-              brightness={brightness}
-              contrast={contrast}
-              threshold={threshold}
-              noiseLevel={noiseLevel}
-              saturation={saturation}
-              posterize={posterize}
-              blur={blur}
-              onBrightnessChange={setBrightness}
-              onContrastChange={setContrast}
-              onThresholdChange={setThreshold}
-              onNoiseLevelChange={setNoiseLevel}
-              onSaturationChange={setSaturation}
-              onPosterizeChange={setPosterize}
-              onBlurChange={setBlur}
-              onRandomize={handleRandomize}
-              onReset={handleReset}
-              onExport={handleExport}
-              canExport={!!ditheredImageData}
-              isProcessing={isProcessing}
-              availableControls={currentTemplate?.availableControls || ['brightness', 'contrast', 'threshold', 'noiseLevel']}
-            />
-          </div>
+      {/* Main Content - Fixed Height */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Scrollable Controls */}
+        <div className="w-80 border-r border-gray-800 bg-gray-900/30 backdrop-blur-sm flex-shrink-0">
+          <ScrollArea className="h-full">
+            <div className="p-4 space-y-4">
+              <TemplateSelector
+                templates={TEMPLATES}
+                selectedTemplate={selectedTemplate}
+                onTemplateChange={handleTemplateChange}
+              />
+              
+              <AlgorithmSelector
+                algorithms={DITHER_ALGORITHMS}
+                selectedAlgorithm={selectedAlgorithm}
+                onAlgorithmChange={setSelectedAlgorithm}
+              />
+              
+              <ControlPanel
+                brightness={brightness}
+                contrast={contrast}
+                threshold={threshold}
+                noiseLevel={noiseLevel}
+                saturation={saturation}
+                posterize={posterize}
+                blur={blur}
+                onBrightnessChange={setBrightness}
+                onContrastChange={setContrast}
+                onThresholdChange={setThreshold}
+                onNoiseLevelChange={setNoiseLevel}
+                onSaturationChange={setSaturation}
+                onPosterizeChange={setPosterize}
+                onBlurChange={setBlur}
+                onRandomize={handleRandomize}
+                onReset={handleReset}
+                onExport={handleExport}
+                canExport={!!ditheredImageData}
+                isProcessing={isProcessing}
+                availableControls={currentTemplate?.availableControls || ['brightness', 'contrast', 'threshold', 'noiseLevel']}
+              />
+            </div>
+          </ScrollArea>
+        </div>
 
-          {/* Right Column - Image Area */}
-          <div className="xl:col-span-3">
-            {!originalImage ? (
+        {/* Right Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {!originalImage ? (
+            <div className="flex-1 flex items-center justify-center p-6">
               <ImageUploader
                 onImageUpload={handleImageUpload}
                 isDragActive={isDragActive}
                 onDragEnter={() => setIsDragActive(true)}
                 onDragLeave={() => setIsDragActive(false)}
               />
-            ) : (
-              <div className="space-y-6">
-                {/* Image Preview */}
-                <div className="bg-gray-900/30 backdrop-blur-sm rounded-lg p-6 border border-gray-700">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold font-mono text-cyan-400">
-                      LIVE PREVIEW
-                    </h3>
-                    <div className="flex items-center space-x-4">
-                      {ditheredImageData && (
-                        <span className="text-gray-400 font-mono text-sm">
-                          {ditheredImageData.width}×{ditheredImageData.height}
-                        </span>
-                      )}
-                      {isProcessing && (
-                        <div className="text-cyan-400 font-mono text-sm animate-pulse">
-                          UPDATING...
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-center">
-                    {ditheredImageData ? (
-                      <DitherCanvas
-                        imageData={ditheredImageData}
-                        width={ditheredImageData.width}
-                        height={ditheredImageData.height}
-                      />
-                    ) : (
-                      <div className="w-full h-64 bg-gray-800 rounded-lg flex items-center justify-center">
-                        <div className="text-gray-500 font-mono animate-pulse">
-                          PROCESSING IMAGE...
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Upload New Image Button */}
-                <div className="text-center">
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col p-4">
+              {/* Image Preview Header */}
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
+                <h3 className="text-lg font-bold font-mono text-cyan-400">LIVE PREVIEW</h3>
+                <div className="flex items-center space-x-4">
+                  {ditheredImageData && (
+                    <span className="text-gray-400 font-mono text-sm">
+                      {ditheredImageData.width}×{ditheredImageData.height}
+                    </span>
+                  )}
+                  {isProcessing && (
+                    <div className="text-cyan-400 font-mono text-sm animate-pulse">UPDATING...</div>
+                  )}
                   <button
                     onClick={() => {
                       setOriginalImage(null);
                       setOriginalImageData(null);
                       setDitheredImageData(null);
                     }}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-mono font-bold rounded-lg transition-all duration-300 transform hover:scale-105"
+                    className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-mono text-sm rounded transition-all duration-300"
                   >
-                    UPLOAD NEW IMAGE
+                    NEW IMAGE
                   </button>
                 </div>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer */}
-      <div className="border-t border-gray-800 bg-black/30 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="text-center text-gray-500 font-mono text-sm">
-            <p>DITHER BOY v1.0 - TRANSFORM YOUR IMAGES INTO RETRO PIXEL ART</p>
-          </div>
+              
+              {/* Image Container - Takes remaining space */}
+              <div className="flex-1 bg-gray-900/30 backdrop-blur-sm rounded-lg border border-gray-700 p-4 overflow-hidden flex items-center justify-center">
+                {ditheredImageData ? (
+                  <div className="max-w-full max-h-full overflow-auto">
+                    <DitherCanvas
+                      imageData={ditheredImageData}
+                      width={ditheredImageData.width}
+                      height={ditheredImageData.height}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-gray-500 font-mono animate-pulse">PROCESSING IMAGE...</div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -368,3 +350,5 @@ const Index = () => {
 };
 
 export default Index;
+
+</edits_to_apply>
