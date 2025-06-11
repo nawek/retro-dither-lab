@@ -2,49 +2,41 @@ import React, { useState, useCallback, useRef, useMemo } from 'react';
 import ImageUploader from '@/components/ImageUploader';
 import DitherCanvas from '@/components/DitherCanvas';
 import AlgorithmSelector from '@/components/AlgorithmSelector';
-import ControlPanel from '@/components/ControlPanel';
 import TemplateSelector from '@/components/TemplateSelector';
+import LayerSystem, { EffectLayer } from '@/components/LayerSystem';
+import LayerControls from '@/components/LayerControls';
 import { DITHER_ALGORITHMS, applyDither } from '@/utils/ditherAlgorithms';
 import { TEMPLATES } from '@/utils/templates';
+import { processLayers } from '@/utils/layerProcessor';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Download, Shuffle, RotateCcw, Layers } from 'lucide-react';
 
 const Index = () => {
   const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(null);
   const [originalImageData, setOriginalImageData] = useState<ImageData | null>(null);
   const [ditheredImageData, setDitheredImageData] = useState<ImageData | null>(null);
-  const [selectedAlgorithm, setSelectedAlgorithm] = useState('floyd-steinberg');
   const [selectedTemplate, setSelectedTemplate] = useState('classic-1bit');
-  const [brightness, setBrightness] = useState(100);
-  const [contrast, setContrast] = useState(100);
-  const [threshold, setThreshold] = useState(128);
-  const [noiseLevel, setNoiseLevel] = useState(0);
-  const [saturation, setSaturation] = useState(100);
-  const [posterize, setPosterize] = useState(256);
-  const [blur, setBlur] = useState(0);
   const [isDragActive, setIsDragActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'templates' | 'layers'>('templates');
+  
+  // Layer system state
+  const [layers, setLayers] = useState<EffectLayer[]>([]);
+  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { toast } = useToast();
 
   const currentTemplate = TEMPLATES.find(t => t.id === selectedTemplate);
+  const selectedLayer = layers.find(layer => layer.id === selectedLayerId) || null;
 
   // Debounced processing function for real-time updates
   const debouncedProcessImage = useMemo(() => {
     let timeoutId: NodeJS.Timeout;
     
-    return (
-      imageData: ImageData,
-      algorithm: string,
-      brightness: number,
-      contrast: number,
-      threshold: number,
-      noiseLevel: number,
-      saturation: number,
-      posterize: number,
-      blur: number
-    ) => {
+    return (imageData: ImageData, layers: EffectLayer[]) => {
       clearTimeout(timeoutId);
       
       timeoutId = setTimeout(() => {
@@ -52,13 +44,13 @@ const Index = () => {
         
         requestAnimationFrame(() => {
           try {
-            const processed = applyDither(imageData, algorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur);
+            const processed = processLayers(imageData, layers);
             setDitheredImageData(processed);
           } catch (error) {
             console.error('Error processing image:', error);
             toast({
               title: "Processing Error",
-              description: "Failed to apply dithering effect. Please try again.",
+              description: "Failed to apply layer effects. Please try again.",
               variant: "destructive",
             });
           } finally {
@@ -74,18 +66,33 @@ const Index = () => {
     if (!template) return;
     
     setSelectedTemplate(templateId);
-    setSelectedAlgorithm(template.defaultSettings.algorithm);
-    setBrightness(template.defaultSettings.brightness);
-    setContrast(template.defaultSettings.contrast);
-    setThreshold(template.defaultSettings.threshold);
-    setNoiseLevel(template.defaultSettings.noiseLevel);
-    setSaturation(template.defaultSettings.saturation || 100);
-    setPosterize(template.defaultSettings.posterize || 256);
-    setBlur(template.defaultSettings.blur || 0);
+    
+    // Create a new layer based on the template
+    const newLayer: EffectLayer = {
+      id: `layer-${Date.now()}`,
+      name: template.name,
+      algorithm: template.defaultSettings.algorithm,
+      opacity: 100,
+      isVisible: true,
+      blendMode: 'normal',
+      settings: {
+        brightness: template.defaultSettings.brightness,
+        contrast: template.defaultSettings.contrast,
+        threshold: template.defaultSettings.threshold,
+        noiseLevel: template.defaultSettings.noiseLevel,
+        saturation: template.defaultSettings.saturation || 100,
+        posterize: template.defaultSettings.posterize || 256,
+        blur: template.defaultSettings.blur || 0,
+      },
+    };
+    
+    setLayers([newLayer]);
+    setSelectedLayerId(newLayer.id);
+    setActiveTab('layers');
     
     toast({
       title: "Template Applied!",
-      description: `Switched to ${template.name} preset`,
+      description: `Created new layer with ${template.name} preset`,
     });
   }, [toast]);
 
@@ -117,8 +124,10 @@ const Index = () => {
       setOriginalImageData(imageData);
       setDitheredImageData(null);
       
-      // Process immediately with current settings
-      debouncedProcessImage(imageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur);
+      // Process immediately with current layers
+      if (layers.length > 0) {
+        debouncedProcessImage(imageData, layers);
+      }
       
       toast({
         title: "Image Loaded",
@@ -135,51 +144,76 @@ const Index = () => {
     };
     
     img.src = URL.createObjectURL(file);
-  }, [selectedAlgorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur, debouncedProcessImage, toast]);
+  }, [layers, debouncedProcessImage, toast]);
+
+  const handleLayersChange = useCallback((newLayers: EffectLayer[]) => {
+    setLayers(newLayers);
+    
+    if (originalImageData) {
+      debouncedProcessImage(originalImageData, newLayers);
+    }
+  }, [originalImageData, debouncedProcessImage]);
+
+  const handleLayerUpdate = useCallback((layerId: string, updates: Partial<EffectLayer>) => {
+    const newLayers = layers.map(layer =>
+      layer.id === layerId ? { ...layer, ...updates } : layer
+    );
+    setLayers(newLayers);
+    
+    if (originalImageData) {
+      debouncedProcessImage(originalImageData, newLayers);
+    }
+  }, [layers, originalImageData, debouncedProcessImage]);
 
   const handleRandomize = useCallback(() => {
-    const randomAlgorithm = DITHER_ALGORITHMS[Math.floor(Math.random() * DITHER_ALGORITHMS.length)];
-    const newBrightness = Math.floor(Math.random() * 100) + 50; // 50-150
-    const newContrast = Math.floor(Math.random() * 100) + 50; // 50-150
-    const newThreshold = Math.floor(Math.random() * 200) + 50; // 50-250
-    const newNoiseLevel = Math.floor(Math.random() * 30); // 0-30
-    const newSaturation = Math.floor(Math.random() * 100) + 50; // 50-150
-    const newPosterize = Math.floor(Math.random() * 256); // 0-256
-    const newBlur = Math.floor(Math.random() * 10); // 0-10
+    if (!selectedLayer) return;
     
-    setSelectedAlgorithm(randomAlgorithm.id);
-    setBrightness(newBrightness);
-    setContrast(newContrast);
-    setThreshold(newThreshold);
-    setNoiseLevel(newNoiseLevel);
-    setSaturation(newSaturation);
-    setPosterize(newPosterize);
-    setBlur(newBlur);
+    const randomAlgorithm = DITHER_ALGORITHMS[Math.floor(Math.random() * DITHER_ALGORITHMS.length)];
+    const updates = {
+      algorithm: randomAlgorithm.id,
+      settings: {
+        ...selectedLayer.settings,
+        brightness: Math.floor(Math.random() * 100) + 50,
+        contrast: Math.floor(Math.random() * 100) + 50,
+        threshold: Math.floor(Math.random() * 200) + 50,
+        noiseLevel: Math.floor(Math.random() * 30),
+        saturation: Math.floor(Math.random() * 100) + 50,
+        posterize: Math.floor(Math.random() * 256),
+        blur: Math.floor(Math.random() * 10),
+      },
+    };
+    
+    handleLayerUpdate(selectedLayer.id, updates);
     
     toast({
-      title: "Settings Randomized!",
+      title: "Layer Randomized!",
       description: `Applied ${randomAlgorithm.name} with random settings`,
     });
-  }, [toast]);
+  }, [selectedLayer, handleLayerUpdate, toast]);
 
   const handleReset = useCallback(() => {
-    const template = TEMPLATES.find(t => t.id === selectedTemplate);
-    if (template) {
-      setBrightness(template.defaultSettings.brightness);
-      setContrast(template.defaultSettings.contrast);
-      setThreshold(template.defaultSettings.threshold);
-      setNoiseLevel(template.defaultSettings.noiseLevel);
-      setSaturation(template.defaultSettings.saturation || 100);
-      setPosterize(template.defaultSettings.posterize || 256);
-      setBlur(template.defaultSettings.blur || 0);
-      setSelectedAlgorithm(template.defaultSettings.algorithm);
-    }
+    if (!selectedLayer || !currentTemplate) return;
+    
+    const updates = {
+      algorithm: currentTemplate.defaultSettings.algorithm,
+      settings: {
+        brightness: currentTemplate.defaultSettings.brightness,
+        contrast: currentTemplate.defaultSettings.contrast,
+        threshold: currentTemplate.defaultSettings.threshold,
+        noiseLevel: currentTemplate.defaultSettings.noiseLevel,
+        saturation: currentTemplate.defaultSettings.saturation || 100,
+        posterize: currentTemplate.defaultSettings.posterize || 256,
+        blur: currentTemplate.defaultSettings.blur || 0,
+      },
+    };
+    
+    handleLayerUpdate(selectedLayer.id, updates);
     
     toast({
-      title: "Settings Reset",
-      description: "All parameters restored to template defaults",
+      title: "Layer Reset",
+      description: "Layer parameters restored to template defaults",
     });
-  }, [selectedTemplate, toast]);
+  }, [selectedLayer, currentTemplate, handleLayerUpdate, toast]);
 
   const handleExport = useCallback(() => {
     if (!ditheredImageData) return;
@@ -199,7 +233,7 @@ const Index = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `dithered-${selectedAlgorithm}-${Date.now()}.png`;
+      a.download = `dithered-layers-${Date.now()}.png`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -207,17 +241,10 @@ const Index = () => {
       
       toast({
         title: "Export Complete!",
-        description: "Your dithered image has been downloaded",
+        description: "Your layered dithered image has been downloaded",
       });
     }, 'image/png');
-  }, [ditheredImageData, selectedAlgorithm, toast]);
-
-  // Process image when parameters change
-  React.useEffect(() => {
-    if (originalImageData) {
-      debouncedProcessImage(originalImageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur);
-    }
-  }, [originalImageData, selectedAlgorithm, brightness, contrast, threshold, noiseLevel, saturation, posterize, blur, debouncedProcessImage]);
+  }, [ditheredImageData, toast]);
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col overflow-hidden">
@@ -232,7 +259,7 @@ const Index = () => {
               <h1 className="text-lg font-bold font-mono bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
                 DITHER BOY
               </h1>
-              <p className="text-gray-400 text-xs font-mono">RETRO PIXEL ART GENERATOR</p>
+              <p className="text-gray-400 text-xs font-mono">LAYERED PIXEL ART GENERATOR</p>
             </div>
           </div>
           
@@ -251,40 +278,86 @@ const Index = () => {
         <div className="w-72 border-r border-gray-800 bg-gray-900/30 backdrop-blur-sm flex-shrink-0 overflow-hidden">
           <ScrollArea className="h-full">
             <div className="p-3 space-y-3">
-              <TemplateSelector
-                templates={TEMPLATES}
-                selectedTemplate={selectedTemplate}
-                onTemplateChange={handleTemplateChange}
-              />
+              {/* Tab Selector */}
+              <div className="flex bg-gray-800 rounded-lg p-1">
+                <button
+                  onClick={() => setActiveTab('templates')}
+                  className={`flex-1 px-3 py-2 text-xs font-mono rounded-md transition-all duration-200 ${
+                    activeTab === 'templates'
+                      ? 'bg-cyan-500 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  TEMPLATES
+                </button>
+                <button
+                  onClick={() => setActiveTab('layers')}
+                  className={`flex-1 px-3 py-2 text-xs font-mono rounded-md transition-all duration-200 flex items-center justify-center ${
+                    activeTab === 'layers'
+                      ? 'bg-cyan-500 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-3 h-3 mr-1" />
+                  LAYERS
+                </button>
+              </div>
+
+              {activeTab === 'templates' ? (
+                <TemplateSelector
+                  templates={TEMPLATES}
+                  selectedTemplate={selectedTemplate}
+                  onTemplateChange={handleTemplateChange}
+                />
+              ) : (
+                <LayerSystem
+                  layers={layers}
+                  selectedLayerId={selectedLayerId}
+                  onLayersChange={handleLayersChange}
+                  onSelectedLayerChange={setSelectedLayerId}
+                />
+              )}
               
-              <AlgorithmSelector
-                algorithms={DITHER_ALGORITHMS}
-                selectedAlgorithm={selectedAlgorithm}
-                onAlgorithmChange={setSelectedAlgorithm}
-              />
-              
-              <ControlPanel
-                brightness={brightness}
-                contrast={contrast}
-                threshold={threshold}
-                noiseLevel={noiseLevel}
-                saturation={saturation}
-                posterize={posterize}
-                blur={blur}
-                onBrightnessChange={setBrightness}
-                onContrastChange={setContrast}
-                onThresholdChange={setThreshold}
-                onNoiseLevelChange={setNoiseLevel}
-                onSaturationChange={setSaturation}
-                onPosterizeChange={setPosterize}
-                onBlurChange={setBlur}
-                onRandomize={handleRandomize}
-                onReset={handleReset}
-                onExport={handleExport}
-                canExport={!!ditheredImageData}
-                isProcessing={isProcessing}
-                availableControls={currentTemplate?.availableControls || ['brightness', 'contrast', 'threshold', 'noiseLevel']}
-              />
+              {activeTab === 'layers' && (
+                <>
+                  <LayerControls
+                    layer={selectedLayer}
+                    onLayerUpdate={handleLayerUpdate}
+                    isProcessing={isProcessing}
+                    availableControls={currentTemplate?.availableControls || ['brightness', 'contrast', 'threshold', 'noiseLevel']}
+                  />
+                  
+                  {/* Action Buttons */}
+                  <div className="space-y-3 bg-gray-900/50 backdrop-blur-sm p-4 rounded-lg border border-gray-700">
+                    <Button
+                      onClick={handleReset}
+                      disabled={isProcessing || !selectedLayer}
+                      className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 disabled:from-gray-600 disabled:to-gray-700 text-white font-mono font-bold text-xs"
+                    >
+                      <RotateCcw className="w-3 h-3 mr-2" />
+                      RESET LAYER
+                    </Button>
+                    
+                    <Button
+                      onClick={handleRandomize}
+                      disabled={isProcessing || !selectedLayer}
+                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 disabled:from-gray-600 disabled:to-gray-700 text-white font-mono font-bold text-xs"
+                    >
+                      <Shuffle className="w-3 h-3 mr-2" />
+                      RANDOMIZE
+                    </Button>
+                    
+                    <Button
+                      onClick={handleExport}
+                      disabled={!ditheredImageData || isProcessing}
+                      className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-400 hover:to-teal-400 disabled:from-gray-600 disabled:to-gray-700 text-white font-mono font-bold text-xs"
+                    >
+                      <Download className="w-3 h-3 mr-2" />
+                      {isProcessing ? 'PROCESSING...' : 'EXPORT PNG'}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </ScrollArea>
         </div>
@@ -311,6 +384,11 @@ const Index = () => {
                       {ditheredImageData.width}×{ditheredImageData.height}
                     </span>
                   )}
+                  {layers.length > 0 && (
+                    <span className="text-cyan-400 font-mono text-xs">
+                      {layers.filter(l => l.isVisible).length}/{layers.length} layers
+                    </span>
+                  )}
                   {isProcessing && (
                     <div className="text-cyan-400 font-mono text-xs animate-pulse">UPDATING...</div>
                   )}
@@ -319,6 +397,9 @@ const Index = () => {
                       setOriginalImage(null);
                       setOriginalImageData(null);
                       setDitheredImageData(null);
+                      setLayers([]);
+                      setSelectedLayerId(null);
+                      setActiveTab('templates');
                     }}
                     className="px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-mono text-xs rounded transition-all duration-300"
                   >
@@ -338,7 +419,9 @@ const Index = () => {
                     />
                   </div>
                 ) : (
-                  <div className="text-gray-500 font-mono animate-pulse text-sm">PROCESSING IMAGE...</div>
+                  <div className="text-gray-500 font-mono animate-pulse text-sm">
+                    {layers.length === 0 ? 'SELECT A TEMPLATE OR CREATE A LAYER...' : 'PROCESSING LAYERS...'}
+                  </div>
                 )}
               </div>
             </div>
@@ -350,3 +433,5 @@ const Index = () => {
 };
 
 export default Index;
+
+</initial_code>
