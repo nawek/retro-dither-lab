@@ -245,6 +245,191 @@ const Index = () => {
       });
     }, 'image/png');
   }, [ditheredImageData, toast]);
+
+  return (
+    <div className="h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col overflow-hidden">
+      {/* Compact Header */}
+      <div className="bg-black/50 backdrop-blur-sm border-b border-gray-800 px-4 py-2 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-5 h-5 bg-gradient-to-r from-cyan-400 to-blue-500 rounded-lg flex items-center justify-center">
+              <div className="w-2 h-2 bg-white rounded-sm opacity-80"></div>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold font-mono bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                DITHER BOY
+              </h1>
+              <p className="text-gray-400 text-xs font-mono">LAYERED PIXEL ART GENERATOR</p>
+            </div>
+          </div>
+          
+          {isProcessing && (
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-cyan-400 rounded-full animate-pulse"></div>
+              <span className="text-cyan-400 font-mono text-xs">PROCESSING...</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Content - Fixed Height */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Fixed Width */}
+        <div className="w-72 border-r border-gray-800 bg-gray-900/30 backdrop-blur-sm flex-shrink-0 overflow-hidden">
+          <ScrollArea className="h-full">
+            <div className="p-3 space-y-3">
+              {/* Tab Selector */}
+              <div className="flex bg-gray-800 rounded-lg p-1">
+                <button
+                  onClick={() => setActiveTab('templates')}
+                  className={`flex-1 px-3 py-2 text-xs font-mono rounded-md transition-all duration-200 ${
+                    activeTab === 'templates'
+                      ? 'bg-cyan-500 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  TEMPLATES
+                </button>
+                <button
+                  onClick={() => setActiveTab('layers')}
+                  className={`flex-1 px-3 py-2 text-xs font-mono rounded-md transition-all duration-200 flex items-center justify-center ${
+                    activeTab === 'layers'
+                      ? 'bg-cyan-500 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-3 h-3 mr-1" />
+                  LAYERS
+                </button>
+              </div>
+
+              {activeTab === 'templates' ? (
+                <TemplateSelector
+                  templates={TEMPLATES}
+                  selectedTemplate={selectedTemplate}
+                  onTemplateChange={handleTemplateChange}
+                />
+              ) : (
+                <LayerSystem
+                  layers={layers}
+                  selectedLayerId={selectedLayerId}
+                  onLayersChange={handleLayersChange}
+                  onSelectedLayerChange={setSelectedLayerId}
+                />
+              )}
+              
+              {activeTab === 'layers' && (
+                <>
+                  <LayerControls
+                    layer={selectedLayer}
+                    onLayerUpdate={handleLayerUpdate}
+                    isProcessing={isProcessing}
+                    availableControls={currentTemplate?.availableControls || ['brightness', 'contrast', 'threshold', 'noiseLevel']}
+                  />
+                  
+                  {/* Action Buttons */}
+                  <div className="space-y-3 bg-gray-900/50 backdrop-blur-sm p-4 rounded-lg border border-gray-700">
+                    <Button
+                      onClick={handleReset}
+                      disabled={isProcessing || !selectedLayer}
+                      className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-400 hover:to-red-400 disabled:from-gray-600 disabled:to-gray-700 text-white font-mono font-bold text-xs"
+                    >
+                      <RotateCcw className="w-3 h-3 mr-2" />
+                      RESET LAYER
+                    </Button>
+                    
+                    <Button
+                      onClick={handleRandomize}
+                      disabled={isProcessing || !selectedLayer}
+                      className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 disabled:from-gray-600 disabled:to-gray-700 text-white font-mono font-bold text-xs"
+                    >
+                      <Shuffle className="w-3 h-3 mr-2" />
+                      RANDOMIZE
+                    </Button>
+                    
+                    <Button
+                      onClick={handleExport}
+                      disabled={!ditheredImageData || isProcessing}
+                      className="w-full bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-400 hover:to-teal-400 disabled:from-gray-600 disabled:to-gray-700 text-white font-mono font-bold text-xs"
+                    >
+                      <Download className="w-3 h-3 mr-2" />
+                      {isProcessing ? 'PROCESSING...' : 'EXPORT PNG'}
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        {/* Right Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {!originalImage ? (
+            <div className="flex-1 flex items-center justify-center p-4">
+              <ImageUploader
+                onImageUpload={handleImageUpload}
+                isDragActive={isDragActive}
+                onDragEnter={() => setIsDragActive(true)}
+                onDragLeave={() => setIsDragActive(false)}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col p-3 overflow-hidden">
+              {/* Image Preview Header */}
+              <div className="flex items-center justify-between mb-2 flex-shrink-0">
+                <h3 className="text-sm font-bold font-mono text-cyan-400">LIVE PREVIEW</h3>
+                <div className="flex items-center space-x-3">
+                  {ditheredImageData && (
+                    <span className="text-gray-400 font-mono text-xs">
+                      {ditheredImageData.width}×{ditheredImageData.height}
+                    </span>
+                  )}
+                  {layers.length > 0 && (
+                    <span className="text-cyan-400 font-mono text-xs">
+                      {layers.filter(l => l.isVisible).length}/{layers.length} layers
+                    </span>
+                  )}
+                  {isProcessing && (
+                    <div className="text-cyan-400 font-mono text-xs animate-pulse">UPDATING...</div>
+                  )}
+                  <button
+                    onClick={() => {
+                      setOriginalImage(null);
+                      setOriginalImageData(null);
+                      setDitheredImageData(null);
+                      setLayers([]);
+                      setSelectedLayerId(null);
+                      setActiveTab('templates');
+                    }}
+                    className="px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-400 hover:to-pink-400 text-white font-mono text-xs rounded transition-all duration-300"
+                  >
+                    NEW IMAGE
+                  </button>
+                </div>
+              </div>
+              
+              {/* Image Container - Takes remaining space */}
+              <div className="flex-1 bg-gray-900/30 backdrop-blur-sm rounded-lg border border-gray-700 p-3 overflow-hidden flex items-center justify-center">
+                {ditheredImageData ? (
+                  <div className="max-w-full max-h-full overflow-auto">
+                    <DitherCanvas
+                      imageData={ditheredImageData}
+                      width={ditheredImageData.width}
+                      height={ditheredImageData.height}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-gray-500 font-mono animate-pulse text-sm">
+                    {layers.length === 0 ? 'SELECT A TEMPLATE OR CREATE A LAYER...' : 'PROCESSING LAYERS...'}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default Index;
