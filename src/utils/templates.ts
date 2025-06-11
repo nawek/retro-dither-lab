@@ -1,4 +1,3 @@
-
 import { Template } from '@/components/TemplateSelector';
 
 export const TEMPLATES: Template[] = [
@@ -109,7 +108,7 @@ export const TEMPLATES: Template[] = [
     id: 'datamosh',
     name: 'Datamosh',
     description: 'Digital compression glitch',
-    icon: 'Zap',
+    icon: 'Blocks',
     defaultSettings: {
       algorithm: 'datamosh',
       brightness: 100,

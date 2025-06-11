@@ -1,6 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { Palette, Gamepad2, Tv, Camera, Zap, Sparkles, Shuffle, Monitor, Eye, Cpu, Glitch, Blocks, Grid3X3, Move, Scan } from 'lucide-react';
+import { Palette, Gamepad2, Tv, Camera, Zap, Sparkles, Shuffle, Monitor, Eye, Cpu, Blocks, Grid3X3, Move, Scan } from 'lucide-react';
 
 export interface Template {
   id: string;
@@ -38,7 +38,6 @@ const iconComponents = {
   Monitor: Monitor,
   Eye: Eye,
   Cpu: Cpu,
-  Glitch: Glitch,
   Blocks: Blocks,
   Grid3X3: Grid3X3,
   Move: Move,
@@ -100,3 +99,5 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
 };
 
 export default TemplateSelector;
+
+}
