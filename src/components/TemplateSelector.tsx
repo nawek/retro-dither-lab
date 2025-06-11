@@ -99,5 +99,3 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
 };
 
 export default TemplateSelector;
-
-}
