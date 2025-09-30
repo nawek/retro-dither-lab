@@ -57,35 +57,48 @@ const TemplateSelector: React.FC<TemplateSelectorProps> = ({
   };
 
   return (
-    <div className="space-y-3 bg-gray-900/50 backdrop-blur-sm p-4 rounded-lg border border-gray-700">
-      <h3 className="text-md font-bold text-white font-mono mb-3">STYLE TEMPLATES</h3>
+    <div className="space-y-3 bg-gradient-panel backdrop-blur-xl p-5 rounded-xl border border-border/50 shadow-elegant">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-black text-foreground font-mono uppercase tracking-wider">
+          Style Templates
+        </h3>
+        <div className="h-2 w-2 bg-accent rounded-full animate-glow-pulse" />
+      </div>
       
       {categories.map(category => (
         <div key={category} className="space-y-2">
-          <h4 className="text-xs font-semibold text-cyan-400 font-mono uppercase tracking-wider">
+          <h4 className="text-xs font-bold text-primary font-mono uppercase tracking-wider px-2 py-1 bg-primary/10 rounded-md inline-block">
             {category}
           </h4>
           
-          <div className="grid grid-cols-1 gap-1">
+          <div className="grid grid-cols-1 gap-2">
             {templates
               .filter(t => t.category === category)
               .map(template => (
                 <Button
                   key={template.id}
                   variant={selectedTemplate === template.id ? "default" : "outline"}
-                  className={`text-left justify-start h-auto p-2 font-mono transition-all duration-200 text-xs ${
+                  className={`group text-left justify-start h-auto p-3 font-mono transition-all duration-300 text-xs relative overflow-hidden ${
                     selectedTemplate === template.id
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white border-cyan-400'
-                      : 'bg-gray-800/50 text-gray-300 border-gray-600 hover:border-cyan-500 hover:bg-gray-700/50'
+                      ? 'bg-gradient-cyber text-primary-foreground border-primary shadow-glow-cyan'
+                      : 'bg-card/30 text-foreground border-border/50 hover:border-primary/50 hover:bg-card/50 hover:shadow-elegant'
                   }`}
                   onClick={() => onTemplateChange(template.id)}
                 >
-                  <div className="flex items-center space-x-2">
-                    <div className="text-cyan-400 flex-shrink-0">
+                  {selectedTemplate === template.id && (
+                    <div className="absolute inset-0 bg-gradient-neon opacity-20 animate-shimmer" 
+                         style={{ backgroundSize: '200% 100%' }} />
+                  )}
+                  <div className="flex items-center space-x-3 relative z-10">
+                    <div className={`flex-shrink-0 p-2 rounded-lg ${
+                      selectedTemplate === template.id 
+                        ? 'bg-primary-foreground/20' 
+                        : 'bg-primary/20 group-hover:bg-primary/30'
+                    } transition-colors duration-300`}>
                       {getIcon(template.icon)}
                     </div>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-xs leading-tight">{template.name}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs leading-tight mb-1">{template.name}</div>
                       <div className="text-xs opacity-75 leading-tight truncate">{template.description}</div>
                     </div>
                   </div>

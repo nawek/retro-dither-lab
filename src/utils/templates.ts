@@ -15,7 +15,7 @@ export const TEMPLATES: Template[] = [
       saturation: 0,
       posterize: 2
     },
-    availableControls: ['brightness', 'contrast', 'threshold', 'saturation'],
+    availableControls: ['brightness', 'contrast', 'threshold'],
     category: 'Retro'
   },
   {
@@ -32,7 +32,7 @@ export const TEMPLATES: Template[] = [
       saturation: 80,
       posterize: 4
     },
-    availableControls: ['brightness', 'contrast', 'threshold', 'noiseLevel', 'saturation'],
+    availableControls: ['brightness', 'contrast', 'threshold', 'noiseLevel', 'saturation', 'posterize'],
     category: 'Retro'
   },
   {
@@ -70,6 +70,40 @@ export const TEMPLATES: Template[] = [
     category: 'Print'
   },
   {
+    id: 'crosshatch-art',
+    name: 'Crosshatch',
+    description: 'Hand-drawn crosshatch style',
+    icon: 'Grid3X3',
+    defaultSettings: {
+      algorithm: 'crosshatch',
+      brightness: 100,
+      contrast: 140,
+      threshold: 120,
+      noiseLevel: 0,
+      saturation: 0,
+      posterize: 2
+    },
+    availableControls: ['brightness', 'contrast', 'threshold'],
+    category: 'Artistic'
+  },
+  {
+    id: 'stipple-dots',
+    name: 'Stipple',
+    description: 'Pointillism dot pattern',
+    icon: 'Scan',
+    defaultSettings: {
+      algorithm: 'stipple',
+      brightness: 105,
+      contrast: 130,
+      threshold: 140,
+      noiseLevel: 0,
+      saturation: 0,
+      posterize: 2
+    },
+    availableControls: ['brightness', 'contrast', 'threshold'],
+    category: 'Artistic'
+  },
+  {
     id: 'cyberpunk',
     name: 'Cyberpunk',
     description: 'Futuristic glitch aesthetic',
@@ -102,6 +136,23 @@ export const TEMPLATES: Template[] = [
       blur: 0.5
     },
     availableControls: ['brightness', 'contrast', 'threshold', 'noiseLevel', 'saturation', 'posterize', 'blur'],
+    category: 'Modern'
+  },
+  {
+    id: 'blue-noise',
+    name: 'Blue Noise',
+    description: 'High-quality noise distribution',
+    icon: 'Move',
+    defaultSettings: {
+      algorithm: 'blue-noise',
+      brightness: 100,
+      contrast: 120,
+      threshold: 128,
+      noiseLevel: 0,
+      saturation: 100,
+      posterize: 256
+    },
+    availableControls: ['brightness', 'contrast', 'threshold', 'saturation'],
     category: 'Modern'
   },
   {
@@ -185,6 +236,40 @@ export const TEMPLATES: Template[] = [
       noiseLevel: 20,
       saturation: 80,
       posterize: 4
+    },
+    availableControls: ['brightness', 'contrast', 'noiseLevel', 'saturation', 'posterize'],
+    category: 'Glitch'
+  },
+  {
+    id: 'wave-distort',
+    name: 'Wave Distortion',
+    description: 'Sinusoidal wave displacement',
+    icon: 'Move',
+    defaultSettings: {
+      algorithm: 'wave-distortion',
+      brightness: 100,
+      contrast: 120,
+      threshold: 128,
+      noiseLevel: 30,
+      saturation: 100,
+      posterize: 256
+    },
+    availableControls: ['brightness', 'contrast', 'noiseLevel', 'saturation'],
+    category: 'Glitch'
+  },
+  {
+    id: 'block-chaos',
+    name: 'Block Chaos',
+    description: 'Random block displacement',
+    icon: 'Blocks',
+    defaultSettings: {
+      algorithm: 'block-glitch',
+      brightness: 105,
+      contrast: 130,
+      threshold: 128,
+      noiseLevel: 45,
+      saturation: 120,
+      posterize: 64
     },
     availableControls: ['brightness', 'contrast', 'noiseLevel', 'saturation', 'posterize'],
     category: 'Glitch'

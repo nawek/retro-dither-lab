@@ -20,6 +20,30 @@ export const DITHER_ALGORITHMS: DitherAlgorithm[] = [
     category: 'Error Diffusion'
   },
   {
+    id: 'jarvis-judice-ninke',
+    name: 'Jarvis-Judice-Ninke',
+    description: 'Wide-area error diffusion',
+    category: 'Error Diffusion'
+  },
+  {
+    id: 'burkes',
+    name: 'Burkes',
+    description: 'Simplified wide-area diffusion',
+    category: 'Error Diffusion'
+  },
+  {
+    id: 'sierra',
+    name: 'Sierra',
+    description: 'Balanced error distribution',
+    category: 'Error Diffusion'
+  },
+  {
+    id: 'two-row-sierra',
+    name: 'Two-Row Sierra',
+    description: 'Faster Sierra variant',
+    category: 'Error Diffusion'
+  },
+  {
     id: 'bayer-2x2',
     name: 'Bayer 2×2',
     description: 'Simple ordered dithering pattern',
@@ -38,15 +62,45 @@ export const DITHER_ALGORITHMS: DitherAlgorithm[] = [
     category: 'Ordered Dithering'
   },
   {
+    id: 'bayer-16x16',
+    name: 'Bayer 16×16',
+    description: 'Ultra-fine dithering matrix',
+    category: 'Ordered Dithering'
+  },
+  {
     id: 'halftone-dots',
     name: 'Halftone Dots',
     description: 'Newspaper-style dot patterns',
     category: 'Halftone'
   },
   {
+    id: 'halftone-lines',
+    name: 'Halftone Lines',
+    description: 'Linear halftone pattern',
+    category: 'Halftone'
+  },
+  {
+    id: 'crosshatch',
+    name: 'Crosshatch',
+    description: 'Artistic cross-hatching effect',
+    category: 'Artistic'
+  },
+  {
+    id: 'stipple',
+    name: 'Stipple',
+    description: 'Pointillism-style dots',
+    category: 'Artistic'
+  },
+  {
     id: 'random',
     name: 'Random Noise',
     description: 'Chaotic pixel-based dithering',
+    category: 'Experimental'
+  },
+  {
+    id: 'blue-noise',
+    name: 'Blue Noise',
+    description: 'High-quality random distribution',
     category: 'Experimental'
   },
   {
@@ -77,6 +131,18 @@ export const DITHER_ALGORITHMS: DitherAlgorithm[] = [
     id: 'bit-crush',
     name: 'Bit Crush',
     description: 'Reduce color bit depth',
+    category: 'Glitch'
+  },
+  {
+    id: 'wave-distortion',
+    name: 'Wave Distortion',
+    description: 'Sinusoidal displacement',
+    category: 'Glitch'
+  },
+  {
+    id: 'block-glitch',
+    name: 'Block Glitch',
+    description: 'Random block displacement',
     category: 'Glitch'
   }
 ];
@@ -177,16 +243,34 @@ export function applyDither(
       return atkinsonDither(data, width, height, threshold);
     case 'stucki':
       return stuckiDither(data, width, height, threshold);
+    case 'jarvis-judice-ninke':
+      return jarvisJudiceNinkeDither(data, width, height, threshold);
+    case 'burkes':
+      return burkesDither(data, width, height, threshold);
+    case 'sierra':
+      return sierraDither(data, width, height, threshold);
+    case 'two-row-sierra':
+      return twoRowSierraDither(data, width, height, threshold);
     case 'bayer-2x2':
       return bayerDither(data, width, height, BAYER_2X2, threshold);
     case 'bayer-4x4':
       return bayerDither(data, width, height, BAYER_4X4, threshold);
     case 'bayer-8x8':
       return bayerDither(data, width, height, BAYER_8X8, threshold);
+    case 'bayer-16x16':
+      return bayerDither(data, width, height, generateBayer16x16(), threshold);
     case 'halftone-dots':
       return halftoneDither(data, width, height, threshold);
+    case 'halftone-lines':
+      return halftoneLinesDither(data, width, height, threshold);
+    case 'crosshatch':
+      return crosshatchDither(data, width, height, threshold);
+    case 'stipple':
+      return stippleDither(data, width, height, threshold);
     case 'random':
       return randomDither(data, width, height, threshold);
+    case 'blue-noise':
+      return blueNoiseDither(data, width, height, threshold);
     case 'datamosh':
       return datamoshEffect(data, width, height, noiseLevel);
     case 'pixel-sort':
@@ -197,6 +281,10 @@ export function applyDither(
       return rgbShiftEffect(data, width, height, noiseLevel);
     case 'bit-crush':
       return bitCrushEffect(data, width, height, posterize);
+    case 'wave-distortion':
+      return waveDistortion(data, width, height, noiseLevel);
+    case 'block-glitch':
+      return blockGlitch(data, width, height, noiseLevel);
     default:
       return new ImageData(data, width, height);
   }
@@ -573,6 +661,310 @@ function bitCrushEffect(data: Uint8ClampedArray, width: number, height: number, 
   for (let i = 0; i < data.length; i += 4) {
     for (let channel = 0; channel < 3; channel++) {
       data[i + channel] = Math.round(data[i + channel] / step) * step;
+    }
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+// New error diffusion algorithms
+function jarvisJudiceNinkeDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      const newGray = gray >= threshold ? 255 : 0;
+      const error = gray - newGray;
+      
+      data[idx] = data[idx + 1] = data[idx + 2] = newGray;
+      
+      const positions = [
+        { x: x + 1, y: y, factor: 7/48 }, { x: x + 2, y: y, factor: 5/48 },
+        { x: x - 2, y: y + 1, factor: 3/48 }, { x: x - 1, y: y + 1, factor: 5/48 },
+        { x: x, y: y + 1, factor: 7/48 }, { x: x + 1, y: y + 1, factor: 5/48 },
+        { x: x + 2, y: y + 1, factor: 3/48 },
+        { x: x - 2, y: y + 2, factor: 1/48 }, { x: x - 1, y: y + 2, factor: 3/48 },
+        { x: x, y: y + 2, factor: 5/48 }, { x: x + 1, y: y + 2, factor: 3/48 },
+        { x: x + 2, y: y + 2, factor: 1/48 }
+      ];
+      
+      positions.forEach(({ x: nx, y: ny, factor }) => {
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nIdx = (ny * width + nx) * 4;
+          const errorValue = error * factor;
+          for (let c = 0; c < 3; c++) {
+            data[nIdx + c] = Math.max(0, Math.min(255, data[nIdx + c] + errorValue));
+          }
+        }
+      });
+    }
+  }
+  return new ImageData(data, width, height);
+}
+
+function burkesDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      const newGray = gray >= threshold ? 255 : 0;
+      const error = gray - newGray;
+      
+      data[idx] = data[idx + 1] = data[idx + 2] = newGray;
+      
+      const positions = [
+        { x: x + 1, y: y, factor: 8/32 }, { x: x + 2, y: y, factor: 4/32 },
+        { x: x - 2, y: y + 1, factor: 2/32 }, { x: x - 1, y: y + 1, factor: 4/32 },
+        { x: x, y: y + 1, factor: 8/32 }, { x: x + 1, y: y + 1, factor: 4/32 },
+        { x: x + 2, y: y + 1, factor: 2/32 }
+      ];
+      
+      positions.forEach(({ x: nx, y: ny, factor }) => {
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nIdx = (ny * width + nx) * 4;
+          const errorValue = error * factor;
+          for (let c = 0; c < 3; c++) {
+            data[nIdx + c] = Math.max(0, Math.min(255, data[nIdx + c] + errorValue));
+          }
+        }
+      });
+    }
+  }
+  return new ImageData(data, width, height);
+}
+
+function sierraDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      const newGray = gray >= threshold ? 255 : 0;
+      const error = gray - newGray;
+      
+      data[idx] = data[idx + 1] = data[idx + 2] = newGray;
+      
+      const positions = [
+        { x: x + 1, y: y, factor: 5/32 }, { x: x + 2, y: y, factor: 3/32 },
+        { x: x - 2, y: y + 1, factor: 2/32 }, { x: x - 1, y: y + 1, factor: 4/32 },
+        { x: x, y: y + 1, factor: 5/32 }, { x: x + 1, y: y + 1, factor: 4/32 },
+        { x: x + 2, y: y + 1, factor: 2/32 },
+        { x: x - 1, y: y + 2, factor: 2/32 }, { x: x, y: y + 2, factor: 3/32 },
+        { x: x + 1, y: y + 2, factor: 2/32 }
+      ];
+      
+      positions.forEach(({ x: nx, y: ny, factor }) => {
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nIdx = (ny * width + nx) * 4;
+          const errorValue = error * factor;
+          for (let c = 0; c < 3; c++) {
+            data[nIdx + c] = Math.max(0, Math.min(255, data[nIdx + c] + errorValue));
+          }
+        }
+      });
+    }
+  }
+  return new ImageData(data, width, height);
+}
+
+function twoRowSierraDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      const newGray = gray >= threshold ? 255 : 0;
+      const error = gray - newGray;
+      
+      data[idx] = data[idx + 1] = data[idx + 2] = newGray;
+      
+      const positions = [
+        { x: x + 1, y: y, factor: 4/16 }, { x: x + 2, y: y, factor: 3/16 },
+        { x: x - 2, y: y + 1, factor: 1/16 }, { x: x - 1, y: y + 1, factor: 2/16 },
+        { x: x, y: y + 1, factor: 3/16 }, { x: x + 1, y: y + 1, factor: 2/16 },
+        { x: x + 2, y: y + 1, factor: 1/16 }
+      ];
+      
+      positions.forEach(({ x: nx, y: ny, factor }) => {
+        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+          const nIdx = (ny * width + nx) * 4;
+          const errorValue = error * factor;
+          for (let c = 0; c < 3; c++) {
+            data[nIdx + c] = Math.max(0, Math.min(255, data[nIdx + c] + errorValue));
+          }
+        }
+      });
+    }
+  }
+  return new ImageData(data, width, height);
+}
+
+// New ordered dithering
+function generateBayer16x16(): number[][] {
+  const matrix: number[][] = [];
+  for (let i = 0; i < 16; i++) {
+    matrix[i] = [];
+    for (let j = 0; j < 16; j++) {
+      const x = i ^ j;
+      const y = i;
+      matrix[i][j] = (x * 16 + y) % 256;
+    }
+  }
+  return matrix;
+}
+
+// New halftone and artistic effects
+function halftoneLinesDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
+  const lineSpacing = 4;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      
+      const linePosition = y % lineSpacing;
+      const lineThreshold = (linePosition / lineSpacing) * 255;
+      const value = gray >= Math.max(threshold - 50, lineThreshold) ? 255 : 0;
+      
+      data[idx] = data[idx + 1] = data[idx + 2] = value;
+    }
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+function crosshatchDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      
+      const diagonal1 = (x + y) % 6 < 2;
+      const diagonal2 = (x - y + height) % 6 < 2;
+      const horizontal = y % 6 < 2;
+      const vertical = x % 6 < 2;
+      
+      const lineIntensity = (diagonal1 || diagonal2 || horizontal || vertical) ? 0 : 255;
+      const mixFactor = gray / 255;
+      const value = lineIntensity * mixFactor + (1 - mixFactor) * 255;
+      
+      data[idx] = data[idx + 1] = data[idx + 2] = value >= threshold ? 255 : 0;
+    }
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+function stippleDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
+  for (let y = 0; y < height; y += 2) {
+    for (let x = 0; x < width; x += 2) {
+      let totalBrightness = 0;
+      let count = 0;
+      
+      for (let dy = 0; dy < 2 && y + dy < height; dy++) {
+        for (let dx = 0; dx < 2 && x + dx < width; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          totalBrightness += 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+          count++;
+        }
+      }
+      
+      const avgBrightness = totalBrightness / count;
+      const shouldDraw = avgBrightness < threshold;
+      
+      const centerX = x + 1;
+      const centerY = y + 1;
+      const radius = (1 - avgBrightness / 255) * 1.5;
+      
+      for (let dy = 0; dy < 2 && y + dy < height; dy++) {
+        for (let dx = 0; dx < 2 && x + dx < width; dx++) {
+          const idx = ((y + dy) * width + (x + dx)) * 4;
+          const distance = Math.sqrt((x + dx - centerX) ** 2 + (y + dy - centerY) ** 2);
+          const value = (shouldDraw && distance <= radius) ? 0 : 255;
+          
+          data[idx] = data[idx + 1] = data[idx + 2] = value;
+        }
+      }
+    }
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+function blueNoiseDither(data: Uint8ClampedArray, width: number, height: number, threshold: number): ImageData {
+  // Generate blue noise pattern using void-and-cluster algorithm approximation
+  const blueNoise = new Float32Array(width * height);
+  
+  for (let i = 0; i < blueNoise.length; i++) {
+    const x = i % width;
+    const y = Math.floor(i / width);
+    blueNoise[i] = (Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1;
+  }
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const gray = 0.299 * data[idx] + 0.587 * data[idx + 1] + 0.114 * data[idx + 2];
+      
+      const noiseValue = blueNoise[y * width + x] * 100;
+      const adjustedThreshold = threshold + noiseValue - 50;
+      const newGray = gray >= adjustedThreshold ? 255 : 0;
+      
+      data[idx] = data[idx + 1] = data[idx + 2] = newGray;
+    }
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+// New glitch effects
+function waveDistortion(data: Uint8ClampedArray, width: number, height: number, intensity: number): ImageData {
+  const tempData = new Uint8ClampedArray(data);
+  const amplitude = intensity / 2;
+  const frequency = 0.05;
+  
+  for (let y = 0; y < height; y++) {
+    const offset = Math.sin(y * frequency) * amplitude;
+    
+    for (let x = 0; x < width; x++) {
+      const sourceX = Math.round(x + offset);
+      
+      if (sourceX >= 0 && sourceX < width) {
+        const idx = (y * width + x) * 4;
+        const sourceIdx = (y * width + sourceX) * 4;
+        
+        data[idx] = tempData[sourceIdx];
+        data[idx + 1] = tempData[sourceIdx + 1];
+        data[idx + 2] = tempData[sourceIdx + 2];
+      }
+    }
+  }
+  
+  return new ImageData(data, width, height);
+}
+
+function blockGlitch(data: Uint8ClampedArray, width: number, height: number, intensity: number): ImageData {
+  const blockSize = Math.max(4, Math.floor(intensity / 5));
+  const glitchProbability = intensity / 100;
+  
+  for (let y = 0; y < height; y += blockSize) {
+    for (let x = 0; x < width; x += blockSize) {
+      if (Math.random() < glitchProbability) {
+        const offsetX = Math.floor((Math.random() - 0.5) * blockSize * 4);
+        const offsetY = Math.floor((Math.random() - 0.5) * blockSize * 2);
+        
+        for (let dy = 0; dy < blockSize && y + dy < height; dy++) {
+          for (let dx = 0; dx < blockSize && x + dx < width; dx++) {
+            const sourceY = Math.max(0, Math.min(height - 1, y + dy + offsetY));
+            const sourceX = Math.max(0, Math.min(width - 1, x + dx + offsetX));
+            
+            const idx = ((y + dy) * width + (x + dx)) * 4;
+            const sourceIdx = (sourceY * width + sourceX) * 4;
+            
+            data[idx] = data[sourceIdx];
+            data[idx + 1] = data[sourceIdx + 1];
+            data[idx + 2] = data[sourceIdx + 2];
+          }
+        }
+      }
     }
   }
   

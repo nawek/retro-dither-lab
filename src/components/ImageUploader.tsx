@@ -34,34 +34,38 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
 
   return (
     <div
-      className={`relative border-2 border-dashed rounded-lg transition-all duration-300 ${
+      className={`relative border-2 border-dashed rounded-2xl transition-all duration-500 ease-bounce-out ${
         isDragActive
-          ? 'border-cyan-400 bg-cyan-400/10 scale-105'
-          : 'border-gray-600 hover:border-cyan-500'
-      } bg-gray-900/50 backdrop-blur-sm`}
+          ? 'border-primary bg-primary/10 scale-[1.02] shadow-glow-cyan'
+          : 'border-border/50 hover:border-primary/50 hover:shadow-elegant'
+      } bg-gradient-panel backdrop-blur-xl`}
       onDrop={handleDrop}
       onDragOver={(e) => e.preventDefault()}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}
     >
-      <div className="flex flex-col items-center justify-center p-12">
-        <div className="mb-4 relative">
-          <Upload className={`w-16 h-16 transition-all duration-300 ${
-            isDragActive ? 'text-cyan-400 animate-pulse' : 'text-gray-400'
-          }`} />
+      <div className="flex flex-col items-center justify-center p-16">
+        <div className="mb-6 relative">
+          <div className={`transition-all duration-500 ${
+            isDragActive ? 'scale-125 rotate-12' : 'scale-100'
+          }`}>
+            <Upload className={`w-20 h-20 transition-all duration-300 ${
+              isDragActive ? 'text-primary animate-glow-pulse' : 'text-muted-foreground'
+            }`} />
+          </div>
           {isDragActive && (
-            <div className="absolute -inset-2 border-2 border-cyan-400 rounded-full animate-ping" />
+            <div className="absolute -inset-4 border-2 border-primary rounded-full animate-ping opacity-50" />
           )}
         </div>
         
-        <h3 className="text-xl font-bold text-white mb-2 font-mono">
-          DROP YOUR IMAGE HERE
+        <h3 className="text-2xl font-black text-foreground mb-2 font-mono uppercase tracking-wide">
+          Drop Your Image
         </h3>
         
-        <p className="text-gray-400 text-center mb-6 font-mono text-sm">
+        <p className="text-muted-foreground text-center mb-8 font-mono text-sm max-w-md">
           Drag & drop your image or click to browse
           <br />
-          <span className="text-cyan-400">PNG, JPG, WEBP supported</span>
+          <span className="text-primary font-bold">PNG, JPG, WEBP • Max 10MB</span>
         </p>
         
         <input
@@ -71,9 +75,12 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
         
-        <button className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-mono font-bold rounded-lg hover:from-cyan-400 hover:to-blue-400 transition-all duration-300 transform hover:scale-105 shadow-lg">
-          <Image className="inline w-5 h-5 mr-2" />
-          SELECT IMAGE
+        <button className="group relative px-8 py-4 bg-gradient-cyber text-primary-foreground font-mono font-black rounded-xl hover:shadow-glow-cyan transition-all duration-300 transform hover:scale-105 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-neon opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="relative flex items-center space-x-3">
+            <Image className="w-5 h-5" />
+            <span className="uppercase tracking-wider">Select Image</span>
+          </div>
         </button>
       </div>
     </div>

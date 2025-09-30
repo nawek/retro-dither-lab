@@ -28,11 +28,18 @@ const DitherCanvas: React.FC<DitherCanvasProps> = ({ imageData, width, height })
   }, [imageData]);
 
   return (
-    <div className="relative bg-gray-900 rounded-lg overflow-hidden border border-gray-700 shadow-2xl">
+    <div className="relative bg-card/30 rounded-2xl overflow-hidden border border-border/50 shadow-elegant backdrop-blur-sm">
       {isProcessing && (
-        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-10">
-          <div className="text-cyan-400 font-mono text-sm animate-pulse">
-            PROCESSING...
+        <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-10 backdrop-blur-sm">
+          <div className="flex flex-col items-center space-y-3">
+            <div className="flex space-x-1">
+              <div className="h-3 w-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0s' }} />
+              <div className="h-3 w-3 bg-accent rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+              <div className="h-3 w-3 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+            </div>
+            <div className="text-primary font-mono text-xs font-bold animate-pulse uppercase tracking-wider">
+              Processing...
+            </div>
           </div>
         </div>
       )}
@@ -44,15 +51,14 @@ const DitherCanvas: React.FC<DitherCanvasProps> = ({ imageData, width, height })
         className="max-w-full max-h-full object-contain"
         style={{
           imageRendering: 'pixelated',
-          filter: 'contrast(1.1) brightness(1.05)',
         }}
       />
       
-      {/* Scanlines effect */}
+      {/* Subtle scanline overlay */}
       <div 
-        className="absolute inset-0 pointer-events-none opacity-10"
+        className="absolute inset-0 pointer-events-none opacity-5 mix-blend-overlay"
         style={{
-          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #00ffff 2px, #00ffff 4px)',
+          background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, hsl(var(--primary)) 2px, hsl(var(--primary)) 3px)',
         }}
       />
     </div>

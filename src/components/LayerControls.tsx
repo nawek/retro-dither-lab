@@ -40,8 +40,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
 
   const controlComponents = {
     brightness: (
-      <div key="brightness">
-        <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
+      <div key="brightness" className="animate-slide-in-up">
+        <label className="block text-xs font-bold text-primary font-mono mb-2">
           BRIGHTNESS: {layer.settings.brightness}%
         </label>
         <Slider
@@ -56,8 +56,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
       </div>
     ),
     contrast: (
-      <div key="contrast">
-        <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
+      <div key="contrast" className="animate-slide-in-up">
+        <label className="block text-xs font-bold text-primary font-mono mb-2">
           CONTRAST: {layer.settings.contrast}%
         </label>
         <Slider
@@ -72,8 +72,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
       </div>
     ),
     threshold: (
-      <div key="threshold">
-        <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
+      <div key="threshold" className="animate-slide-in-up">
+        <label className="block text-xs font-bold text-primary font-mono mb-2">
           THRESHOLD: {layer.settings.threshold}
         </label>
         <Slider
@@ -88,9 +88,9 @@ const LayerControls: React.FC<LayerControlsProps> = ({
       </div>
     ),
     noiseLevel: (
-      <div key="noiseLevel">
-        <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
-          NOISE LEVEL: {layer.settings.noiseLevel}%
+      <div key="noiseLevel" className="animate-slide-in-up">
+        <label className="block text-xs font-bold text-primary font-mono mb-2">
+          NOISE: {layer.settings.noiseLevel}%
         </label>
         <Slider
           value={[layer.settings.noiseLevel]}
@@ -104,8 +104,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
       </div>
     ),
     saturation: (
-      <div key="saturation">
-        <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
+      <div key="saturation" className="animate-slide-in-up">
+        <label className="block text-xs font-bold text-primary font-mono mb-2">
           SATURATION: {layer.settings.saturation}%
         </label>
         <Slider
@@ -120,31 +120,31 @@ const LayerControls: React.FC<LayerControlsProps> = ({
       </div>
     ),
     posterize: (
-      <div key="posterize">
-        <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
-          POSTERIZE: {layer.settings.posterize} colors
+      <div key="posterize" className="animate-slide-in-up">
+        <label className="block text-xs font-bold text-primary font-mono mb-2">
+          COLORS: {layer.settings.posterize}
         </label>
         <Slider
           value={[layer.settings.posterize]}
           onValueChange={(value) => updateSetting('posterize', value[0])}
           min={2}
-          max={32}
-          step={1}
+          max={256}
+          step={2}
           className="w-full"
           disabled={isProcessing}
         />
       </div>
     ),
     blur: (
-      <div key="blur">
-        <label className="block text-sm font-semibold text-cyan-400 font-mono mb-3">
+      <div key="blur" className="animate-slide-in-up">
+        <label className="block text-xs font-bold text-primary font-mono mb-2">
           BLUR: {layer.settings.blur.toFixed(1)}px
         </label>
         <Slider
           value={[layer.settings.blur]}
           onValueChange={(value) => updateSetting('blur', value[0])}
           min={0}
-          max={5}
+          max={10}
           step={0.1}
           className="w-full"
           disabled={isProcessing}
@@ -154,16 +154,21 @@ const LayerControls: React.FC<LayerControlsProps> = ({
   };
 
   return (
-    <div className="space-y-6 bg-gray-900/50 backdrop-blur-sm p-6 rounded-lg border border-gray-700">
-      <h3 className="text-lg font-bold text-white font-mono mb-4">
-        LAYER CONTROLS
-      </h3>
-      
-      <div className="text-xs font-semibold text-cyan-400 font-mono mb-4">
-        EDITING: {layer.name}
+    <div className="space-y-4 bg-gradient-panel backdrop-blur-xl p-5 rounded-xl border border-border/50 shadow-elegant">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-black text-foreground font-mono uppercase tracking-wider">
+          Layer Controls
+        </h3>
+        <div className="h-2 w-2 bg-primary rounded-full animate-glow-pulse" />
       </div>
       
-      <div className="space-y-6">
+      <div className="px-3 py-2 bg-card/50 rounded-lg border border-primary/20">
+        <div className="text-xs font-bold text-primary font-mono">
+          {layer.name}
+        </div>
+      </div>
+      
+      <div className="space-y-4">
         {availableControls.map(control => controlComponents[control] || null)}
       </div>
     </div>

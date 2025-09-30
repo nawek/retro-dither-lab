@@ -109,39 +109,44 @@ const LayerSystem: React.FC<LayerSystemProps> = ({
   };
 
   return (
-    <div className="space-y-3 bg-gray-900/50 backdrop-blur-sm p-4 rounded-lg border border-gray-700">
+    <div className="space-y-3 bg-gradient-panel backdrop-blur-xl p-5 rounded-xl border border-border/50 shadow-elegant">
       <div className="flex items-center justify-between">
-        <h3 className="text-md font-bold text-white font-mono">EFFECT LAYERS</h3>
+        <h3 className="text-sm font-black text-foreground font-mono uppercase tracking-wider">
+          Effect Layers
+        </h3>
         <Button
           onClick={addLayer}
           size="sm"
-          className="bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-400 hover:to-teal-400 text-white font-mono text-xs"
+          className="group bg-gradient-cyber hover:bg-gradient-neon text-primary-foreground font-mono text-xs font-bold shadow-glow-cyan hover:shadow-glow-purple transition-all duration-300"
         >
-          <Plus className="w-3 h-3 mr-1" />
-          ADD
+          <Plus className="w-3 h-3 mr-1 group-hover:rotate-90 transition-transform duration-300" />
+          Add
         </Button>
       </div>
 
-      <div className="space-y-2 max-h-80 overflow-y-auto">
+      <div className="space-y-2 max-h-96 overflow-y-auto pr-1 custom-scrollbar">
         {layers.map((layer, index) => (
           <div
             key={layer.id}
-            className={`p-3 rounded-lg border transition-all duration-200 ${
+            className={`group p-3 rounded-xl border transition-all duration-300 ${
               selectedLayerId === layer.id
-                ? 'border-cyan-400 bg-cyan-500/10'
-                : 'border-gray-600 bg-gray-800/30'
+                ? 'border-primary bg-primary/10 shadow-glow-cyan scale-[1.02]'
+                : 'border-border/50 bg-card/30 hover:border-primary/50 hover:bg-card/50 hover:shadow-elegant'
             }`}
           >
             {/* Layer Header */}
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-3">
               <div
                 className="flex-1 cursor-pointer"
                 onClick={() => onSelectedLayerChange(layer.id)}
               >
-                <div className="text-xs font-semibold text-white font-mono">
-                  {layer.name}
+                <div className="text-xs font-bold text-foreground font-mono flex items-center space-x-2">
+                  <span>{layer.name}</span>
+                  {!layer.isVisible && (
+                    <span className="px-1 py-0.5 bg-muted/50 text-muted-foreground text-xs rounded">Hidden</span>
+                  )}
                 </div>
-                <div className="text-xs text-gray-400 font-mono">
+                <div className="text-xs text-muted-foreground font-mono mt-0.5">
                   {DITHER_ALGORITHMS.find(a => a.id === layer.algorithm)?.name || layer.algorithm}
                 </div>
               </div>
@@ -151,12 +156,12 @@ const LayerSystem: React.FC<LayerSystemProps> = ({
                   size="sm"
                   variant="ghost"
                   onClick={() => updateLayer(layer.id, { isVisible: !layer.isVisible })}
-                  className="w-6 h-6 p-0"
+                  className="w-7 h-7 p-0 hover:bg-primary/20 transition-colors"
                 >
                   {layer.isVisible ? (
-                    <Eye className="w-3 h-3" />
+                    <Eye className="w-3 h-3 text-primary" />
                   ) : (
-                    <EyeOff className="w-3 h-3 opacity-50" />
+                    <EyeOff className="w-3 h-3 text-muted-foreground" />
                   )}
                 </Button>
                 
@@ -164,18 +169,19 @@ const LayerSystem: React.FC<LayerSystemProps> = ({
                   size="sm"
                   variant="ghost"
                   onClick={() => duplicateLayer(layer.id)}
-                  className="w-6 h-6 p-0"
+                  className="w-7 h-7 p-0 hover:bg-accent/20 transition-colors"
+                  title="Duplicate layer"
                 >
-                  <Copy className="w-3 h-3" />
+                  <Copy className="w-3 h-3 text-accent" />
                 </Button>
                 
-                <div className="flex flex-col">
+                <div className="flex flex-col space-y-0.5">
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => moveLayer(layer.id, 'up')}
                     disabled={index === 0}
-                    className="w-4 h-3 p-0 text-xs"
+                    className="w-5 h-4 p-0 text-xs hover:bg-primary/20 disabled:opacity-30"
                   >
                     ↑
                   </Button>
@@ -184,7 +190,7 @@ const LayerSystem: React.FC<LayerSystemProps> = ({
                     variant="ghost"
                     onClick={() => moveLayer(layer.id, 'down')}
                     disabled={index === layers.length - 1}
-                    className="w-4 h-3 p-0 text-xs"
+                    className="w-5 h-4 p-0 text-xs hover:bg-primary/20 disabled:opacity-30"
                   >
                     ↓
                   </Button>
@@ -195,7 +201,8 @@ const LayerSystem: React.FC<LayerSystemProps> = ({
                   variant="ghost"
                   onClick={() => removeLayer(layer.id)}
                   disabled={layers.length <= 1}
-                  className="w-6 h-6 p-0 text-red-400 hover:text-red-300"
+                  className="w-7 h-7 p-0 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-30"
+                  title="Delete layer"
                 >
                   <X className="w-3 h-3" />
                 </Button>
@@ -204,22 +211,26 @@ const LayerSystem: React.FC<LayerSystemProps> = ({
 
             {/* Layer Controls - Only show for selected layer */}
             {selectedLayerId === layer.id && (
-              <div className="space-y-3">
+              <div className="space-y-3 pt-3 border-t border-border/30 animate-slide-in-up">
                 {/* Algorithm Selection */}
                 <div>
-                  <label className="block text-xs font-semibold text-cyan-400 font-mono mb-1">
-                    ALGORITHM
+                  <label className="block text-xs font-bold text-primary font-mono mb-2">
+                    Algorithm
                   </label>
                   <Select
                     value={layer.algorithm}
                     onValueChange={(value) => updateLayer(layer.id, { algorithm: value })}
                   >
-                    <SelectTrigger className="text-xs font-mono">
+                    <SelectTrigger className="text-xs font-mono h-9 bg-card/50 border-border/50 hover:border-primary/50 transition-colors">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-card border-border">
                       {DITHER_ALGORITHMS.map(algorithm => (
-                        <SelectItem key={algorithm.id} value={algorithm.id} className="font-mono text-xs">
+                        <SelectItem 
+                          key={algorithm.id} 
+                          value={algorithm.id} 
+                          className="font-mono text-xs hover:bg-primary/10 cursor-pointer"
+                        >
                           {algorithm.name}
                         </SelectItem>
                       ))}
@@ -229,8 +240,8 @@ const LayerSystem: React.FC<LayerSystemProps> = ({
 
                 {/* Opacity */}
                 <div>
-                  <label className="block text-xs font-semibold text-cyan-400 font-mono mb-1">
-                    OPACITY: {layer.opacity}%
+                  <label className="block text-xs font-bold text-primary font-mono mb-2">
+                    Opacity: {layer.opacity}%
                   </label>
                   <Slider
                     value={[layer.opacity]}
@@ -244,22 +255,22 @@ const LayerSystem: React.FC<LayerSystemProps> = ({
 
                 {/* Blend Mode */}
                 <div>
-                  <label className="block text-xs font-semibold text-cyan-400 font-mono mb-1">
-                    BLEND MODE
+                  <label className="block text-xs font-bold text-primary font-mono mb-2">
+                    Blend Mode
                   </label>
                   <Select
                     value={layer.blendMode}
                     onValueChange={(value: any) => updateLayer(layer.id, { blendMode: value })}
                   >
-                    <SelectTrigger className="text-xs font-mono">
+                    <SelectTrigger className="text-xs font-mono h-9 bg-card/50 border-border/50 hover:border-primary/50 transition-colors">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="normal" className="font-mono text-xs">Normal</SelectItem>
-                      <SelectItem value="multiply" className="font-mono text-xs">Multiply</SelectItem>
-                      <SelectItem value="screen" className="font-mono text-xs">Screen</SelectItem>
-                      <SelectItem value="overlay" className="font-mono text-xs">Overlay</SelectItem>
-                      <SelectItem value="soft-light" className="font-mono text-xs">Soft Light</SelectItem>
+                    <SelectContent className="bg-card border-border">
+                      <SelectItem value="normal" className="font-mono text-xs hover:bg-primary/10">Normal</SelectItem>
+                      <SelectItem value="multiply" className="font-mono text-xs hover:bg-primary/10">Multiply</SelectItem>
+                      <SelectItem value="screen" className="font-mono text-xs hover:bg-primary/10">Screen</SelectItem>
+                      <SelectItem value="overlay" className="font-mono text-xs hover:bg-primary/10">Overlay</SelectItem>
+                      <SelectItem value="soft-light" className="font-mono text-xs hover:bg-primary/10">Soft Light</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -270,14 +281,14 @@ const LayerSystem: React.FC<LayerSystemProps> = ({
       </div>
 
       {layers.length === 0 && (
-        <div className="text-center py-8">
-          <div className="text-gray-500 font-mono text-sm mb-3">No layers yet</div>
+        <div className="text-center py-12 animate-slide-in-up">
+          <div className="text-muted-foreground font-mono text-sm mb-4">No layers yet</div>
           <Button
             onClick={addLayer}
-            className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white font-mono text-xs"
+            className="bg-gradient-cyber hover:bg-gradient-neon text-primary-foreground font-mono text-xs font-bold shadow-glow-cyan"
           >
             <Plus className="w-4 h-4 mr-2" />
-            CREATE FIRST LAYER
+            Create First Layer
           </Button>
         </div>
       )}
